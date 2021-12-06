@@ -5,6 +5,11 @@ relation_mapping = dict()
 
 
 def load_merge_relation():
+    """
+    Returns a dictionary with old realtion -> new relation mapping
+    eg. replace a set of similar relations with a single relation
+    relations `isa/instanceof/definedas` will be replaced by `isa`
+    """
     config = configparser.ConfigParser()
     config.read("paths.cfg")
     with open(config["paths"]["merge_relation"], encoding="utf8") as f:
@@ -69,7 +74,6 @@ def extract_english():
                     tail = tmp
 
                 data = json.loads(ls[4])
-
                 only_english.append("\t".join([rel, head, tail, str(data["weight"])]))
 
     with open(config["paths"]["conceptnet_en"], "w", encoding="utf8") as f:

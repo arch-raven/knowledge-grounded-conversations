@@ -1093,7 +1093,8 @@ with open(config["paths"]["concept_vocab"], "r", encoding="utf8") as f:
     cpnet_vocab = [l.strip() for l in list(f.readlines())]
 cpnet_vocab = set([c.replace("_", " ") for c in cpnet_vocab])
 
-nlp = spacy.load("en_core_web_sm", disable=["ner", "parser", "textcat"])
+# nlp = spacy.load('en_core_web_sm', disable=['ner', 'parser', 'textcat'])
+nlp = spacy.load("en_core_web_sm")
 
 
 def hard_ground(sent):

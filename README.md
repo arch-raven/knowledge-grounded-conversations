@@ -121,7 +121,7 @@ export DATA_TYPE={anlg, eg, story}
 export ROOT_PATH=..
 export DEVICE=1
 CUDA_VISIBLE_DEVICES=${DEVICE} \
-python3 main.py \
+python main.py \
 --train_data_file ${ROOT_PATH}/data/${DATA_TYPE}/train \
 --dev_data_file ${ROOT_PATH}/data/${DATA_TYPE}/dev \
 --test_data_file ${ROOT_PATH}/data/${DATA_TYPE}/test \

@@ -957,6 +957,7 @@ class MultiHopGen(GPT2PreTrainedModel):
         """
         concept_hidden: bsz x mem x hidden
         """
+        # import pdb;pdb.set_trace()
         bsz = head.size(0)
         mem_t = head.size(1)
         mem = concept_hidden.size(1)
@@ -970,13 +971,18 @@ class MultiHopGen(GPT2PreTrainedModel):
             .masked_fill_(triple_label == -1, 0)
             .float()
         )
-        count_out = torch.zeros(bsz, mem).to(head.device).float()
+        count_out = (
+            torch.zeros(bsz, mem).to(head.device).float()
+        )  # for normalization, confirm?
 
-        o = concept_hidden.gather(1, head.unsqueeze(2).expand(bsz, mem_t, hidden_size))
+        o = concept_hidden.gather(
+            1, head.unsqueeze(2).expand(bsz, mem_t, hidden_size)
+        )  # head -> B,800
         o = o.masked_fill(triple_label.unsqueeze(2) == -1, 0)
         scatter_add(o, tail, dim=1, out=update_hidden)
         scatter_add(count, tail, dim=1, out=count_out)
 
+        # why repeat with tail, to add identity?
         o = concept_hidden.gather(1, tail.unsqueeze(2).expand(bsz, mem_t, hidden_size))
         o = o.masked_fill(triple_label.unsqueeze(2) == -1, 0)
         scatter_add(o, head, dim=1, out=update_hidden)
@@ -1203,15 +1209,16 @@ class MultiHopGen(GPT2PreTrainedModel):
         memory = self.transformer.wte(concept_ids)
         rel_repr = self.relation_embd(relation)
 
-        node_repr, rel_repr = self.multi_layer_comp_gcn(
+        # import pdb; pdb.set_trace()
+        node_repr = self.multi_layer_gcn(
             memory,
-            rel_repr,
             head,
             tail,
             concept_label,
             triple_label,
             layer_number=self.hop_number,
         )
+        # node_repr, rel_repr = self.multi_layer_comp_gcn(memory, rel_repr, head, tail, concept_label, triple_label, layer_number=self.hop_number)
 
         head_repr = torch.gather(
             node_repr,
