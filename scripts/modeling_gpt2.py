@@ -1009,6 +1009,8 @@ class MultiHopGen(GPT2PreTrainedModel):
         method="avg",
     ):
         """
+        default: bsz=128,mem=400(total_num_concepts+padding),mem_t=800(num_triples+padding)
+
         triple_prob: bsz x L x mem_t
         distance: bsz x mem
         head, tail: bsz x mem_t
@@ -1040,6 +1042,7 @@ class MultiHopGen(GPT2PreTrainedModel):
             Calculate triple head score
             """
             node_score = concept_probs[-1]
+            # head.shape (BS, mem_t) -> (BS, L, mem_t)
             triple_head_score = node_score.gather(2, head)
             triple_head_score.masked_fill_((triple_label == -1).unsqueeze(1), 0)
             """
@@ -1094,7 +1097,7 @@ class MultiHopGen(GPT2PreTrainedModel):
         memory = self.transformer.wte(concept_ids)
 
         rel_repr = self.relation_embd(relation)
-
+        ## head & tail value in [0, num_concepts_in_each_example]
         node_repr, rel_repr = self.multi_layer_comp_gcn(
             memory,
             rel_repr,
@@ -1103,21 +1106,6 @@ class MultiHopGen(GPT2PreTrainedModel):
             concept_label,
             triple_label,
             layer_number=self.hop_number,
-        )
-
-        head_repr = torch.gather(
-            node_repr,
-            1,
-            head.unsqueeze(-1).expand(
-                node_repr.size(0), head.size(1), node_repr.size(-1)
-            ),
-        )
-        tail_repr = torch.gather(
-            node_repr,
-            1,
-            tail.unsqueeze(-1).expand(
-                node_repr.size(0), tail.size(1), node_repr.size(-1)
-            ),
         )
 
         # bsz x mem_triple x hidden

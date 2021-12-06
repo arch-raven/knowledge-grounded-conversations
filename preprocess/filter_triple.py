@@ -24,6 +24,14 @@ def save_json(data, filename):
 
 
 def filter_directed_triple(data, max_concepts=200, max_triples=300):
+    """
+    Filter triples: Remove triples opposite to source->target direction ie distance[source]>distance[target]
+
+    Input Data:   triples, concepts, labels, distances
+    Returns Data: relations, head_ids, tail_ids, triples_labels, concepts, labels, distances
+
+    relations, head_ids, tails_ids and triples all have same length (all derived from triples)
+    """
     count = 0
     gt_triple_count = 0
     _data = []

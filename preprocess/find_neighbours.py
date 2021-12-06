@@ -31,6 +31,9 @@ nlp = spacy.load("en_core_web_sm", disable=["ner", "parser", "textcat"])
 
 
 def load_resources():
+    """
+    Loads concept2id, relation2id, id2relation, id2concept
+    """
     global concept2id, relation2id, id2relation, id2concept, concept_embs, relation_embs
     concept2id = {}
     id2concept = {}
@@ -51,6 +54,10 @@ def load_resources():
 
 
 def load_cpnet():
+    """
+    Loads cpnet and cpnet_simple
+    Doubt: Whats the purpose of cpnet_simple?
+    """
     global cpnet, concept2id, relation2id, id2relation, id2concept, cpnet_simple
     print("loading cpnet....")
     cpnet = nx.read_gpickle(config["paths"]["conceptnet_en_graph"])
@@ -98,6 +105,25 @@ def cosine_score_triple(h, t, r):
 def find_neighbours_frequency(
     source_sentence, source_concepts, target_concepts, T, max_B=100
 ):
+    """
+    Input:
+    T: number of hops
+    max_B: Number of nodes to keep, sorted according to number of neighbours
+
+    Intermediate Variables:
+    Vts: Dictionary with most populous (number of neighbours) nodes and distance from Source Concepts
+    Ets: Dictionary of dictionary with structure {node:{source:relations}} relations is a list of all relations b/w node and source
+    triples: Created using node, source and relation info of Ets and filtered using Vts
+
+    Outputs:
+
+    res: List of all concepts found within `T` hops
+    labels: 0 or 1 label corresponding to each concept in `res` if concept in `target_concepts`
+    distances: Multihop neighbour distance corresponding to each concept in `res`
+    triples: (u, rels, v)
+    found_num: Number of target_concepts found after T hops
+    len(res): Total concepts encountered after T hops
+    """
     global cpnet, concept2id, relation2id, id2relation, id2concept, cpnet_simple, total_concepts_id
     source = [concept2id[s_cpt] for s_cpt in source_concepts]
     start = source
@@ -198,6 +224,12 @@ def process(input_path, output_path, T, max_B):
 
 
 def load_total_concepts(data_path):
+    """
+    Use `concepts_nv.jsonl` (created using `ground_concepts_simple.py`) to populate vocab
+    of all concepts used in train and valid step and also present in `concept2id` (last step
+    doesnt seem necesaary).
+    Create a vocab file (`total_concepts.txt`) also save list of IDs to `total_concepts_id`
+    """
     global concept2id, total_concepts_id, config
     total_concepts = []
     total_concepts_id = []

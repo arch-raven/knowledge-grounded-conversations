@@ -95,4 +95,5 @@ def save_cpnet():
     nx.write_gpickle(graph, config["paths"]["conceptnet_en_graph"])
 
 
-save_cpnet()
+if __name__ == "__main__":
+    save_cpnet()

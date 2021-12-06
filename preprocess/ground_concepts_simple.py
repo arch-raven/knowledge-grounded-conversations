@@ -1199,27 +1199,27 @@ def read_model_vocab(data_path):
     print(len(model_vocab))
 
 
-dataset = sys.argv[1]
+if __name__ == "__main__":
+    dataset = sys.argv[1]
 
-DATA_PATH = config["paths"][dataset + "_dir"]
+    DATA_PATH = config["paths"][dataset + "_dir"]
 
+    SRC_FILE = DATA_PATH + "/{}/source.csv"
+    TGT_FILE = DATA_PATH + "/{}/target.csv"
 
-SRC_FILE = DATA_PATH + "/{}/source.csv"
-TGT_FILE = DATA_PATH + "/{}/target.csv"
+    read_model_vocab(config["paths"]["gpt2_vocab"])
 
-read_model_vocab(config["paths"]["gpt2_vocab"])
+    TYPE = "train"
+    src = read_csv(SRC_FILE.format(TYPE))
+    tgt = read_csv(TGT_FILE.format(TYPE))
+    grounding_sentences(src, tgt, TYPE, DATA_PATH)
 
-TYPE = "train"
-src = read_csv(SRC_FILE.format(TYPE))
-tgt = read_csv(TGT_FILE.format(TYPE))
-grounding_sentences(src, tgt, TYPE, DATA_PATH)
+    TYPE = "dev"
+    src = read_csv(SRC_FILE.format(TYPE))
+    tgt = read_csv(TGT_FILE.format(TYPE))
+    grounding_sentences(src, tgt, TYPE, DATA_PATH)
 
-TYPE = "dev"
-src = read_csv(SRC_FILE.format(TYPE))
-tgt = read_csv(TGT_FILE.format(TYPE))
-grounding_sentences(src, tgt, TYPE, DATA_PATH)
-
-TYPE = "test"
-src = read_csv(SRC_FILE.format(TYPE))
-tgt = read_csv(TGT_FILE.format(TYPE))
-grounding_sentences(src, tgt, TYPE, DATA_PATH)
+    TYPE = "test"
+    src = read_csv(SRC_FILE.format(TYPE))
+    tgt = read_csv(TGT_FILE.format(TYPE))
+    grounding_sentences(src, tgt, TYPE, DATA_PATH)

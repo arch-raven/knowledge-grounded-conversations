@@ -445,10 +445,10 @@ def evaluate(args, model, tokenizer, evaluate_metrics="ppl", prefix="0"):
     recall = 0
     triple_Hit_num = 0
     concept_gt_Hit_num = 0
-    for batch in tqdm(eval_dataloader, desc="Evaluating"):
+    for i, batch in tqdm(enumerate(eval_dataloader), desc="Evaluating"):
 
         batch = tuple(t.to(args.device) for t in batch)
-
+        # import pdb; pdb.set_trace()
         with torch.no_grad():
             if evaluate_metrics == "bleu":
                 batch_size = batch[0].size(0)
@@ -468,7 +468,7 @@ def evaluate(args, model, tokenizer, evaluate_metrics="ppl", prefix="0"):
                     "map_mask": batch[14],
                     "seq_generator": generator,
                 }
-
+                continue
                 hypos = model.generate(**batch)
                 gen_seqs.extend(hypos)
 
@@ -736,6 +736,8 @@ def main():
         "--server_port", type=str, default="", help="For distant debugging."
     )
     args = parser.parse_args()
+    # default eval args
+    # args = parser.parse_args("--train_data_file data/eg/train --dev_data_file data/eg/dev --test_data_file data/eg/test --graph_path 2hops_100_directed_triple_filter.json --output_dir models/eg/grf-eg --source_length 32 --target_length 32 --model_type gpt2 --model_name_or_path models/gpt2-small --do_eval --per_gpu_train_batch_size 16 --per_gpu_eval_batch_size 16 --workers 7 --seed 42 --evaluate_metrics bleu --overwrite_output_dir --aggregate_method max --gamma 0.5".split())
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError(
