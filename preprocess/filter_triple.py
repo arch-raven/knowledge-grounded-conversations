@@ -138,27 +138,31 @@ def bfs(start, triple_dict, source):
     return shortest_paths
 
 
-dataset = sys.argv[1]
+if __name__ == "__main__":
+    dataset = sys.argv[1]
+    assert dataset in ["wizard", "story", "eg", "anlg"]
 
-DATA_PATH = config["paths"][dataset + "_dir"]
-T = 2
-max_B = 100
+    DATA_PATH = config["paths"][dataset + "_dir"]
+    T = 2
+    max_B = 100
 
+    data = read_json(DATA_PATH + "/train/{}hops_{}_triple.json".format(T, max_B))
+    f_data = filter_directed_triple(data, max_concepts=400, max_triples=1000)
+    save_json(
+        f_data,
+        DATA_PATH + "/train/{}hops_{}_directed_triple_filter.json".format(T, max_B),
+    )
 
-data = read_json(DATA_PATH + "/train/{}hops_{}_triple.json".format(T, max_B))
-f_data = filter_directed_triple(data, max_concepts=400, max_triples=1000)
-save_json(
-    f_data, DATA_PATH + "/train/{}hops_{}_directed_triple_filter.json".format(T, max_B)
-)
+    data = read_json(DATA_PATH + "/dev/{}hops_{}_triple.json".format(T, max_B))
+    f_data = filter_directed_triple(data, max_concepts=400, max_triples=1000)
+    save_json(
+        f_data,
+        DATA_PATH + "/dev/{}hops_{}_directed_triple_filter.json".format(T, max_B),
+    )
 
-data = read_json(DATA_PATH + "/dev/{}hops_{}_triple.json".format(T, max_B))
-f_data = filter_directed_triple(data, max_concepts=400, max_triples=1000)
-save_json(
-    f_data, DATA_PATH + "/dev/{}hops_{}_directed_triple_filter.json".format(T, max_B)
-)
-
-data = read_json(DATA_PATH + "/test/{}hops_{}_triple.json".format(T, max_B))
-f_data = filter_directed_triple(data, max_concepts=400, max_triples=1000)
-save_json(
-    f_data, DATA_PATH + "/test/{}hops_{}_directed_triple_filter.json".format(T, max_B)
-)
+    data = read_json(DATA_PATH + "/test/{}hops_{}_triple.json".format(T, max_B))
+    f_data = filter_directed_triple(data, max_concepts=400, max_triples=1000)
+    save_json(
+        f_data,
+        DATA_PATH + "/test/{}hops_{}_directed_triple_filter.json".format(T, max_B),
+    )

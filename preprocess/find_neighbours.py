@@ -256,31 +256,33 @@ def load_total_concepts(data_path):
             f.write(str(line) + "\n")
 
 
-dataset = sys.argv[1]
+if __name__ == "__main__":
+    dataset = sys.argv[1]
+    assert dataset in ["wizard", "story", "eg", "anlg"]
 
-T = 2
-max_B = 100
-DATA_PATH = config["paths"][dataset + "_dir"]
+    T = 2
+    max_B = 100
+    DATA_PATH = config["paths"][dataset + "_dir"]
 
-load_resources()
-load_cpnet()
-load_total_concepts(DATA_PATH)
+    load_resources()
+    load_cpnet()
+    load_total_concepts(DATA_PATH)
 
-process(
-    DATA_PATH + "/train/concepts_nv.json",
-    DATA_PATH + "/train/{}hops_{}_triple.json".format(T, max_B),
-    T,
-    max_B,
-)
-process(
-    DATA_PATH + "/dev/concepts_nv.json",
-    DATA_PATH + "/dev/{}hops_{}_triple.json".format(T, max_B),
-    T,
-    max_B,
-)
-process(
-    DATA_PATH + "/test/concepts_nv.json",
-    DATA_PATH + "/test/{}hops_{}_triple.json".format(T, max_B),
-    T,
-    max_B,
-)
+    process(
+        DATA_PATH + "/train/concepts_nv.json",
+        DATA_PATH + "/train/{}hops_{}_triple.json".format(T, max_B),
+        T,
+        max_B,
+    )
+    process(
+        DATA_PATH + "/dev/concepts_nv.json",
+        DATA_PATH + "/dev/{}hops_{}_triple.json".format(T, max_B),
+        T,
+        max_B,
+    )
+    process(
+        DATA_PATH + "/test/concepts_nv.json",
+        DATA_PATH + "/test/{}hops_{}_triple.json".format(T, max_B),
+        T,
+        max_B,
+    )
