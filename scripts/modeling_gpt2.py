@@ -33,7 +33,12 @@ from torch.nn.parameter import Parameter
 
 from torch_scatter import scatter_max, scatter_mean, scatter_add
 
-from transformers.modeling_utils import PreTrainedModel, Conv1D, prune_conv1d_layer, SequenceSummary
+from transformers.modeling_utils import (
+    PreTrainedModel,
+    Conv1D,
+    prune_conv1d_layer,
+    SequenceSummary,
+)
 from transformers.configuration_gpt2 import GPT2Config
 from transformers.file_utils import add_start_docstrings
 from transformers import BertModel, BertConfig
@@ -42,21 +47,25 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-GPT2_PRETRAINED_MODEL_ARCHIVE_MAP = {"gpt2": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-pytorch_model.bin",
-                                     "gpt2-medium": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-medium-pytorch_model.bin",
-                                     "gpt2-large": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-large-pytorch_model.bin",
-                                     "distilgpt2": "https://s3.amazonaws.com/models.huggingface.co/bert/distilgpt2-pytorch_model.bin",}
+GPT2_PRETRAINED_MODEL_ARCHIVE_MAP = {
+    "gpt2": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-pytorch_model.bin",
+    "gpt2-medium": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-medium-pytorch_model.bin",
+    "gpt2-large": "https://s3.amazonaws.com/models.huggingface.co/bert/gpt2-large-pytorch_model.bin",
+    "distilgpt2": "https://s3.amazonaws.com/models.huggingface.co/bert/distilgpt2-pytorch_model.bin",
+}
+
 
 def load_tf_weights_in_gpt2(model, config, gpt2_checkpoint_path):
-    """ Load tf checkpoints in a pytorch model
-    """
+    """Load tf checkpoints in a pytorch model"""
     try:
         import re
         import numpy as np
         import tensorflow as tf
     except ImportError:
-        logger.error("Loading a TensorFlow model in PyTorch, requires TensorFlow to be installed. Please see "
-            "https://www.tensorflow.org/install/ for installation instructions.")
+        logger.error(
+            "Loading a TensorFlow model in PyTorch, requires TensorFlow to be installed. Please see "
+            "https://www.tensorflow.org/install/ for installation instructions."
+        )
         raise
     tf_path = os.path.abspath(gpt2_checkpoint_path)
     logger.info("Converting TensorFlow checkpoint from {}".format(tf_path))
@@ -72,20 +81,20 @@ def load_tf_weights_in_gpt2(model, config, gpt2_checkpoint_path):
 
     for name, array in zip(names, arrays):
         name = name[6:]  # skip "model/"
-        name = name.split('/')
+        name = name.split("/")
         pointer = model
         for m_name in name:
-            if re.fullmatch(r'[A-Za-z]+\d+', m_name):
-                l = re.split(r'(\d+)', m_name)
+            if re.fullmatch(r"[A-Za-z]+\d+", m_name):
+                l = re.split(r"(\d+)", m_name)
             else:
                 l = [m_name]
-            if l[0] == 'w' or l[0] == 'g':
-                pointer = getattr(pointer, 'weight')
-            elif l[0] == 'b':
-                pointer = getattr(pointer, 'bias')
-            elif l[0] == 'wpe' or l[0] == 'wte':
+            if l[0] == "w" or l[0] == "g":
+                pointer = getattr(pointer, "weight")
+            elif l[0] == "b":
+                pointer = getattr(pointer, "bias")
+            elif l[0] == "wpe" or l[0] == "wte":
                 pointer = getattr(pointer, l[0])
-                pointer = getattr(pointer, 'weight')
+                pointer = getattr(pointer, "weight")
             else:
                 pointer = getattr(pointer, l[0])
             if len(l) >= 2:
@@ -102,7 +111,11 @@ def load_tf_weights_in_gpt2(model, config, gpt2_checkpoint_path):
 
 
 def gelu(x):
-    return 0.5 * x * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+    return (
+        0.5
+        * x
+        * (1 + torch.tanh(math.sqrt(2 / math.pi) * (x + 0.044715 * torch.pow(x, 3))))
+    )
 
 
 class Attention(nn.Module):
@@ -113,7 +126,9 @@ class Attention(nn.Module):
         n_state = nx  # in Attention: n_state=768 (nx=n_embd)
         # [switch nx => n_state from Block to Attention to keep identical to TF implem]
         assert n_state % config.n_head == 0
-        self.register_buffer("bias", torch.tril(torch.ones(n_ctx, n_ctx)).view(1, 1, n_ctx, n_ctx))
+        self.register_buffer(
+            "bias", torch.tril(torch.ones(n_ctx, n_ctx)).view(1, 1, n_ctx, n_ctx)
+        )
         self.n_head = config.n_head
         self.split_size = n_state
         self.scale = scale
@@ -128,14 +143,18 @@ class Attention(nn.Module):
         if len(heads) == 0:
             return
         mask = torch.ones(self.n_head, self.split_size // self.n_head)
-        heads = set(heads) - self.pruned_heads  # Convert to set and emove already pruned heads
+        heads = (
+            set(heads) - self.pruned_heads
+        )  # Convert to set and emove already pruned heads
         for head in heads:
             # Compute how many pruned heads are before the head and move the index accordingly
             head = head - sum(1 if h < head else 0 for h in self.pruned_heads)
             mask[head] = 0
         mask = mask.view(-1).contiguous().eq(1)
         index = torch.arange(len(mask))[mask].long()
-        index_attn = torch.cat([index, index + self.split_size, index + (2*self.split_size)])
+        index_attn = torch.cat(
+            [index, index + self.split_size, index + (2 * self.split_size)]
+        )
 
         # Prune conv1d layers
         self.c_attn = prune_conv1d_layer(self.c_attn, index_attn, dim=1)
@@ -151,7 +170,7 @@ class Attention(nn.Module):
         if self.scale:
             w = w / math.sqrt(v.size(-1))
         nd, ns = w.size(-2), w.size(-1)
-        b = self.bias[:, :, ns-nd:ns, :ns].clone()
+        b = self.bias[:, :, ns - nd : ns, :ns].clone()
         if head_mask is not None:
             b *= head_mask
             b += (head_mask == 0).float()
@@ -160,8 +179,7 @@ class Attention(nn.Module):
         if attention_mask is not None:
             # Apply the attention mask
             w = w + attention_mask
-        
-        
+
         w = nn.Softmax(dim=-1)(w)
         w = self.attn_dropout(w)
 
@@ -190,10 +208,15 @@ class Attention(nn.Module):
         key = self.split_heads(key, k=True)
         value = self.split_heads(value)
         if layer_past is not None:
-            past_key, past_value = layer_past[0].transpose(-2, -1), layer_past[1]  # transpose back cf below
+            past_key, past_value = (
+                layer_past[0].transpose(-2, -1),
+                layer_past[1],
+            )  # transpose back cf below
             key = torch.cat((past_key, key), dim=-1)
             value = torch.cat((past_value, value), dim=-2)
-        present = torch.stack((key.transpose(-2, -1), value))  # transpose to have same shapes for stacking
+        present = torch.stack(
+            (key.transpose(-2, -1), value)
+        )  # transpose to have same shapes for stacking
         attn_outputs = self._attn(query, key, value, attention_mask, head_mask)
         a = attn_outputs[0]
 
@@ -230,10 +253,12 @@ class Block(nn.Module):
         self.mlp = MLP(4 * nx, config)
 
     def forward(self, x, layer_past=None, attention_mask=None, head_mask=None):
-        output_attn = self.attn(self.ln_1(x),
-                                layer_past=layer_past,
-                                attention_mask=attention_mask,
-                                head_mask=head_mask)
+        output_attn = self.attn(
+            self.ln_1(x),
+            layer_past=layer_past,
+            attention_mask=attention_mask,
+            head_mask=head_mask,
+        )
         a = output_attn[0]  # output_attn: a, present, (attentions)
 
         x = x + a
@@ -245,9 +270,10 @@ class Block(nn.Module):
 
 
 class GPT2PreTrainedModel(PreTrainedModel):
-    """ An abstract class to handle weights initialization and
-        a simple interface for dowloading and loading pretrained models.
+    """An abstract class to handle weights initialization and
+    a simple interface for dowloading and loading pretrained models.
     """
+
     config_class = GPT2Config
     pretrained_model_archive_map = GPT2_PRETRAINED_MODEL_ARCHIVE_MAP
     load_tf_weights = load_tf_weights_in_gpt2
@@ -257,8 +283,7 @@ class GPT2PreTrainedModel(PreTrainedModel):
         super(GPT2PreTrainedModel, self).__init__(*inputs, **kwargs)
 
     def _init_weights(self, module):
-        """ Initialize the weights.
-        """
+        """Initialize the weights."""
         if isinstance(module, (nn.Linear, nn.Embedding, Conv1D)):
             # Slightly different from the TF version which uses truncated_normal for initialization
             # cf https://github.com/pytorch/pytorch/pull/5617
@@ -268,7 +293,7 @@ class GPT2PreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-    
+
     def reorder_encoder_out(self, encoder_outs, new_order):
         """
         Reorder encoder output according to *new_order*.
@@ -336,8 +361,12 @@ GPT2_INPUTS_DOCSTRING = r"""    Inputs:
             ``1`` indicates the head is **not masked**, ``0`` indicates the head is **masked**.
 """
 
-@add_start_docstrings("The bare GPT2 Model transformer outputting raw hidden-states without any specific head on top.",
-                      GPT2_START_DOCSTRING, GPT2_INPUTS_DOCSTRING)
+
+@add_start_docstrings(
+    "The bare GPT2 Model transformer outputting raw hidden-states without any specific head on top.",
+    GPT2_START_DOCSTRING,
+    GPT2_INPUTS_DOCSTRING,
+)
 class GPT2Model(GPT2PreTrainedModel):
     r"""
     Outputs: `Tuple` comprising various elements depending on the configuration (config) and inputs:
@@ -364,17 +393,20 @@ class GPT2Model(GPT2PreTrainedModel):
         last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
 
     """
+
     def __init__(self, config, source_length=0):
         super(GPT2Model, self).__init__(config)
         print("source length: {}".format(source_length))
         self.output_hidden_states = config.output_hidden_states
         self.output_attentions = config.output_attentions
-        #self.output_past = config.output_past
-        
+        # self.output_past = config.output_past
+
         self.wte = nn.Embedding(config.vocab_size, config.n_embd)
         self.wpe = nn.Embedding(config.n_positions, config.n_embd)
         self.drop = nn.Dropout(config.embd_pdrop)
-        self.h = nn.ModuleList([Block(config.n_ctx, config, scale=True) for _ in range(config.n_layer)])
+        self.h = nn.ModuleList(
+            [Block(config.n_ctx, config, scale=True) for _ in range(config.n_layer)]
+        )
         self.ln_f = nn.LayerNorm(config.n_embd, eps=config.layer_norm_epsilon)
         self.source_length = source_length
 
@@ -385,13 +417,21 @@ class GPT2Model(GPT2PreTrainedModel):
         return self.wte
 
     def _prune_heads(self, heads_to_prune):
-        """ Prunes heads of the model.
-            heads_to_prune: dict of {layer_num: list of heads to prune in this layer}
+        """Prunes heads of the model.
+        heads_to_prune: dict of {layer_num: list of heads to prune in this layer}
         """
         for layer, heads in heads_to_prune.items():
             self.h[layer].attn.prune_heads(heads)
 
-    def forward(self, input_ids, past=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None):
+    def forward(
+        self,
+        input_ids,
+        past=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+    ):
         input_shape = input_ids.size()
         input_ids = input_ids.view(-1, input_shape[-1])
         if token_type_ids is not None:
@@ -405,7 +445,12 @@ class GPT2Model(GPT2PreTrainedModel):
         else:
             past_length = past[0][0].size(-2)
         if position_ids is None:
-            position_ids = torch.arange(past_length, input_ids.size(-1) + past_length, dtype=torch.long, device=input_ids.device)
+            position_ids = torch.arange(
+                past_length,
+                input_ids.size(-1) + past_length,
+                dtype=torch.long,
+                device=input_ids.device,
+            )
             position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
 
         # Attention mask.
@@ -423,7 +468,9 @@ class GPT2Model(GPT2PreTrainedModel):
             # positions we want to attend and -10000.0 for masked positions.
             # Since we are adding it to the raw scores before the softmax, this is
             # effectively the same as removing these entirely.
-            attention_mask = attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
+            attention_mask = attention_mask.to(
+                dtype=next(self.parameters()).dtype
+            )  # fp16 compatibility
             attention_mask = (1.0 - attention_mask) * -10000.0
 
         # Prepare head mask if needed
@@ -432,49 +479,59 @@ class GPT2Model(GPT2PreTrainedModel):
         # head_mask has shape n_layer x batch x n_heads x N x N
         if head_mask is not None:
             if head_mask.dim() == 1:
-                head_mask = head_mask.unsqueeze(0).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
+                head_mask = (
+                    head_mask.unsqueeze(0).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
+                )
                 head_mask = head_mask.expand(self.config.n_layer, -1, -1, -1, -1)
             elif head_mask.dim() == 2:
-                head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)  # We can specify head_mask for each layer
-            head_mask = head_mask.to(dtype=next(self.parameters()).dtype) # switch to fload if need + fp16 compatibility
+                head_mask = (
+                    head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)
+                )  # We can specify head_mask for each layer
+            head_mask = head_mask.to(
+                dtype=next(self.parameters()).dtype
+            )  # switch to fload if need + fp16 compatibility
         else:
             head_mask = [None] * self.config.n_layer
-        
+
         # source mask:
         if self.source_length > 0:
-            head_mask = torch.ones(1, 1, 1, input_ids.size(1), dtype=torch.float, device=input_ids.device)
-            head_mask[...,:self.source_length] = 0
+            head_mask = torch.ones(
+                1, 1, 1, input_ids.size(1), dtype=torch.float, device=input_ids.device
+            )
+            head_mask[..., : self.source_length] = 0
             head_mask = [head_mask] * self.config.n_layer
-            
-        
+
         inputs_embeds = self.wte(input_ids)
         position_embeds = self.wpe(position_ids)
         if token_type_ids is not None:
             token_type_embeds = self.wte(token_type_ids)
         else:
             token_type_embeds = 0
-        
+
         hidden_states = inputs_embeds + position_embeds + token_type_embeds
-        
+
         hidden_states = self.drop(hidden_states)
-        
 
         output_shape = input_shape + (hidden_states.size(-1),)
-        
+
         presents = ()
         all_attentions = []
         all_hidden_states = ()
         for i, (block, layer_past) in enumerate(zip(self.h, past)):
             if self.output_hidden_states:
-                all_hidden_states = all_hidden_states + (hidden_states.view(*output_shape),)
-    
-            outputs = block(hidden_states,
-                            layer_past=layer_past,
-                            attention_mask=attention_mask,
-                            head_mask=head_mask[i])
+                all_hidden_states = all_hidden_states + (
+                    hidden_states.view(*output_shape),
+                )
+
+            outputs = block(
+                hidden_states,
+                layer_past=layer_past,
+                attention_mask=attention_mask,
+                head_mask=head_mask[i],
+            )
 
             hidden_states, present = outputs[:2]
-            
+
             if self.output_attentions:
                 all_attentions.append(outputs[2])
 
@@ -486,20 +543,30 @@ class GPT2Model(GPT2PreTrainedModel):
             all_hidden_states = all_hidden_states + (hidden_states,)
 
         outputs = (hidden_states,)
-        #if self.output_past:
+        # if self.output_past:
         #    outputs = outputs + (presents,)
         if self.output_hidden_states:
             outputs = outputs + (all_hidden_states,)
         if self.output_attentions:
             # let the number of heads free (-1) so we can extract attention even after head pruning
-            attention_output_shape = input_shape[:-1] + (-1,) + all_attentions[0].shape[-2:]
-            all_attentions = tuple(t.view(*attention_output_shape) for t in all_attentions)
+            attention_output_shape = (
+                input_shape[:-1] + (-1,) + all_attentions[0].shape[-2:]
+            )
+            all_attentions = tuple(
+                t.view(*attention_output_shape) for t in all_attentions
+            )
             outputs = outputs + (all_attentions,)
-        return outputs  # last hidden state, (presents), (all hidden_states), (attentions)
+        return (
+            outputs  # last hidden state, (presents), (all hidden_states), (attentions)
+        )
 
 
-@add_start_docstrings("""The GPT2 Model transformer with a language modeling head on top
-(linear layer with weights tied to the input embeddings). """, GPT2_START_DOCSTRING, GPT2_INPUTS_DOCSTRING)
+@add_start_docstrings(
+    """The GPT2 Model transformer with a language modeling head on top
+(linear layer with weights tied to the input embeddings). """,
+    GPT2_START_DOCSTRING,
+    GPT2_INPUTS_DOCSTRING,
+)
 class GPT2LMHeadModel(GPT2PreTrainedModel):
     r"""
         **labels**: (`optional`) ``torch.LongTensor`` of shape ``(batch_size, sequence_length)``:
@@ -539,6 +606,7 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
         loss, logits = outputs[:2]
 
     """
+
     def __init__(self, config, source_length=0):
         super(GPT2LMHeadModel, self).__init__(config)
         self.transformer = GPT2Model(config, source_length)
@@ -548,33 +616,46 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
         self.tie_weights()
 
     def tie_weights(self):
-        """ Make sure we are sharing the input and output embeddings.
-            Export to TorchScript can't handle parameter sharing so we are cloning them instead.
+        """Make sure we are sharing the input and output embeddings.
+        Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
-        self._tie_or_clone_weights(self.lm_head,
-                                   self.transformer.wte)
+        self._tie_or_clone_weights(self.lm_head, self.transformer.wte)
 
     def get_representation(self, input_ids, position_ids=None, attention_mask=None):
-        '''get sentence representation via max-pooling'''
-        transformer_outputs = self.transformer(input_ids,
-                                               past=None,
-                                               attention_mask=attention_mask,
-                                               token_type_ids=None,
-                                               position_ids=position_ids,
-                                               head_mask=None)
+        """get sentence representation via max-pooling"""
+        transformer_outputs = self.transformer(
+            input_ids,
+            past=None,
+            attention_mask=attention_mask,
+            token_type_ids=None,
+            position_ids=position_ids,
+            head_mask=None,
+        )
 
         hidden_states = transformer_outputs[0]
-        pool_repr = torch.max(hidden_states * attention_mask.unsqueeze(2).expand_as(hidden_states.data), 1)[0]
+        pool_repr = torch.max(
+            hidden_states * attention_mask.unsqueeze(2).expand_as(hidden_states.data), 1
+        )[0]
         return pool_repr
 
-    def forward(self, input_ids, past=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
-                labels=None):
-        transformer_outputs = self.transformer(input_ids,
-                                               past=past,
-                                               attention_mask=attention_mask,
-                                               token_type_ids=token_type_ids,
-                                               position_ids=position_ids,
-                                               head_mask=head_mask)
+    def forward(
+        self,
+        input_ids,
+        past=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        labels=None,
+    ):
+        transformer_outputs = self.transformer(
+            input_ids,
+            past=past,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+        )
         hidden_states = transformer_outputs[0]
 
         lm_logits = self.lm_head(hidden_states)
@@ -582,22 +663,27 @@ class GPT2LMHeadModel(GPT2PreTrainedModel):
         outputs = (lm_logits,) + transformer_outputs[1:]
         if labels is not None:
             # Shift so that tokens < n predict n
-            shift_logits = lm_logits#[..., :-1, :].contiguous()
-            shift_labels = labels#[..., 1:].contiguous()
+            shift_logits = lm_logits  # [..., :-1, :].contiguous()
+            shift_labels = labels  # [..., 1:].contiguous()
             # Flatten the tokens
             loss_fct = CrossEntropyLoss(ignore_index=-1)
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
-                            shift_labels.view(-1))
+            loss = loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+            )
             outputs = (loss,) + outputs
 
         return outputs  # (loss), lm_logits, presents, (all hidden_states), (attentions)
 
 
-@add_start_docstrings("""The GPT2 Model transformer with a language modeling and a multiple-choice classification
+@add_start_docstrings(
+    """The GPT2 Model transformer with a language modeling and a multiple-choice classification
 head on top e.g. for RocStories/SWAG tasks. The two heads are two linear layers.
 The language modeling head has its weights tied to the input embeddings,
 the classification head takes as input the input of a specified classification token index in the input sequence).
-""", GPT2_START_DOCSTRING, GPT2_INPUTS_DOCSTRING)
+""",
+    GPT2_START_DOCSTRING,
+    GPT2_INPUTS_DOCSTRING,
+)
 class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
     r"""
         **mc_token_ids**: (`optional`, default to index of the last token of the input) ``torch.LongTensor`` of shape ``(batch_size, num_choices)``:
@@ -639,15 +725,15 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
 
         import torch
         from transformers import GPT2Tokenizer, GPT2DoubleHeadsModel
-        
+
         tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
         model = GPT2DoubleHeadsModel.from_pretrained('gpt2')
-        
+
         # Add a [CLS] to the vocabulary (we should train it also!)
         tokenizer.add_special_tokens({'cls_token': '[CLS]'})
         model.resize_token_embeddings(len(tokenizer))  # Update the model embeddings with the new vocabulary size
         print(tokenizer.cls_token_id, len(tokenizer))  # The newly token the last token of the vocabulary
-        
+
         choices = ["Hello, my dog is cute [CLS]", "Hello, my cat is cute [CLS]"]
         encoded_choices = [tokenizer.encode(s) for s in choices]
         cls_token_location = [tokens.index(tokenizer.cls_token_id) for tokens in encoded_choices]
@@ -659,6 +745,7 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
         lm_prediction_scores, mc_prediction_scores = outputs[:2]
 
     """
+
     def __init__(self, config):
         super(GPT2DoubleHeadsModel, self).__init__(config)
         self.transformer = GPT2Model(config)
@@ -669,20 +756,31 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
         self.tie_weights()
 
     def tie_weights(self):
-        """ Make sure we are sharing the input and output embeddings.
-            Export to TorchScript can't handle parameter sharing so we are cloning them instead.
+        """Make sure we are sharing the input and output embeddings.
+        Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
-        self._tie_or_clone_weights(self.lm_head,
-                                   self.transformer.wte)
+        self._tie_or_clone_weights(self.lm_head, self.transformer.wte)
 
-    def forward(self, input_ids, past=None, attention_mask=None, token_type_ids=None, position_ids=None, head_mask=None,
-                mc_token_ids=None, lm_labels=None, mc_labels=None):
-        transformer_outputs = self.transformer(input_ids,
-                                               past=past,
-                                               attention_mask=attention_mask,
-                                               token_type_ids=token_type_ids,
-                                               position_ids=position_ids,
-                                               head_mask=head_mask)
+    def forward(
+        self,
+        input_ids,
+        past=None,
+        attention_mask=None,
+        token_type_ids=None,
+        position_ids=None,
+        head_mask=None,
+        mc_token_ids=None,
+        lm_labels=None,
+        mc_labels=None,
+    ):
+        transformer_outputs = self.transformer(
+            input_ids,
+            past=past,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            head_mask=head_mask,
+        )
 
         hidden_states = transformer_outputs[0]
 
@@ -692,42 +790,66 @@ class GPT2DoubleHeadsModel(GPT2PreTrainedModel):
         outputs = (lm_logits, mc_logits) + transformer_outputs[1:]
         if mc_labels is not None:
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(mc_logits.view(-1, mc_logits.size(-1)),
-                            mc_labels.view(-1))
+            loss = loss_fct(mc_logits.view(-1, mc_logits.size(-1)), mc_labels.view(-1))
             outputs = (loss,) + outputs
         if lm_labels is not None:
             shift_logits = lm_logits[..., :-1, :].contiguous()
             shift_labels = lm_labels[..., 1:].contiguous()
             loss_fct = CrossEntropyLoss(ignore_index=-1)
-            loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)),
-                            shift_labels.view(-1))
+            loss = loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1)
+            )
             outputs = (loss,) + outputs
 
         return outputs  # (lm loss), (mc loss), lm logits, mc logits, presents, (all hidden_states), (attentions)
 
 
-
 class MultiHopGen(GPT2PreTrainedModel):
-    def __init__(self, config, source_length=0, gamma=0.8, alpha=1, beta=1, aggregate_method="max", tokenizer=None, hop_number=2):
+    def __init__(
+        self,
+        config,
+        source_length=0,
+        gamma=0.8,
+        alpha=1,
+        beta=1,
+        aggregate_method="max",
+        tokenizer=None,
+        hop_number=2,
+    ):
         super(MultiHopGen, self).__init__(config)
         self.transformer = GPT2Model(config, source_length)
 
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         self.hop_number = hop_number
-        
+
         self.gamma = gamma
         self.alpha = alpha
         self.beta = beta
         self.aggregate_method = aggregate_method
         self.tokenizer = tokenizer
-        
-        self.triple_linear = nn.Linear(config.n_embd * 3, config.n_embd, bias=False)
-        
-        self.W_s = nn.ModuleList([nn.Linear(config.n_embd, config.n_embd, bias=False) for _ in range(self.hop_number)]) 
-        
-        self.W_n = nn.ModuleList([nn.Linear(config.n_embd, config.n_embd, bias=False) for _ in range(self.hop_number)]) 
 
-        self.W_r = nn.ModuleList([nn.Linear(config.n_embd, config.n_embd, bias=False) for _ in range(self.hop_number)])
+        self.triple_linear = nn.Linear(config.n_embd * 3, config.n_embd, bias=False)
+
+        self.W_s = nn.ModuleList(
+            [
+                nn.Linear(config.n_embd, config.n_embd, bias=False)
+                for _ in range(self.hop_number)
+            ]
+        )
+
+        self.W_n = nn.ModuleList(
+            [
+                nn.Linear(config.n_embd, config.n_embd, bias=False)
+                for _ in range(self.hop_number)
+            ]
+        )
+
+        self.W_r = nn.ModuleList(
+            [
+                nn.Linear(config.n_embd, config.n_embd, bias=False)
+                for _ in range(self.hop_number)
+            ]
+        )
 
         self.gate_linear = nn.Linear(config.n_embd, 1)
         self.relation_embd = nn.Embedding(40, config.n_embd)
@@ -736,69 +858,118 @@ class MultiHopGen(GPT2PreTrainedModel):
         self.tie_weights()
 
     def tie_weights(self):
-        """ Make sure we are sharing the input and output embeddings.
-            Export to TorchScript can't handle parameter sharing so we are cloning them instead.
+        """Make sure we are sharing the input and output embeddings.
+        Export to TorchScript can't handle parameter sharing so we are cloning them instead.
         """
         logger.info("Tie weights in head!!!!!")
-        self._tie_or_clone_weights(self.lm_head,
-                                   self.transformer.wte)
-    
+        self._tie_or_clone_weights(self.lm_head, self.transformer.wte)
 
-    def multi_layer_comp_gcn(self, concept_hidden, relation_hidden, head, tail, concept_label, triple_label, layer_number=2):
+    def multi_layer_comp_gcn(
+        self,
+        concept_hidden,
+        relation_hidden,
+        head,
+        tail,
+        concept_label,
+        triple_label,
+        layer_number=2,
+    ):
         for i in range(layer_number):
-            concept_hidden, relation_hidden = self.comp_gcn(concept_hidden, relation_hidden, head, tail, concept_label, triple_label, i)
+            concept_hidden, relation_hidden = self.comp_gcn(
+                concept_hidden,
+                relation_hidden,
+                head,
+                tail,
+                concept_label,
+                triple_label,
+                i,
+            )
         return concept_hidden, relation_hidden
 
-    def comp_gcn(self, concept_hidden, relation_hidden, head, tail, concept_label, triple_label, layer_idx):
-        '''
+    def comp_gcn(
+        self,
+        concept_hidden,
+        relation_hidden,
+        head,
+        tail,
+        concept_label,
+        triple_label,
+        layer_idx,
+    ):
+        """
         concept_hidden: bsz x mem x hidden
         relation_hidden: bsz x mem_t x hidden
-        '''
+        """
         bsz = head.size(0)
         mem_t = head.size(1)
         mem = concept_hidden.size(1)
         hidden_size = concept_hidden.size(2)
 
         update_node = torch.zeros_like(concept_hidden).to(concept_hidden.device).float()
-        count = torch.ones_like(head).to(head.device).masked_fill_(triple_label == -1, 0).float()
+        count = (
+            torch.ones_like(head)
+            .to(head.device)
+            .masked_fill_(triple_label == -1, 0)
+            .float()
+        )
         count_out = torch.zeros(bsz, mem).to(head.device).float()
 
         o = concept_hidden.gather(1, head.unsqueeze(2).expand(bsz, mem_t, hidden_size))
         o = o.masked_fill(triple_label.unsqueeze(2) == -1, 0)
         scatter_add(o, tail, dim=1, out=update_node)
-        scatter_add( - relation_hidden.masked_fill(triple_label.unsqueeze(2) == -1, 0), tail, dim=1, out=update_node)
+        scatter_add(
+            -relation_hidden.masked_fill(triple_label.unsqueeze(2) == -1, 0),
+            tail,
+            dim=1,
+            out=update_node,
+        )
         scatter_add(count, tail, dim=1, out=count_out)
 
         o = concept_hidden.gather(1, tail.unsqueeze(2).expand(bsz, mem_t, hidden_size))
         o = o.masked_fill(triple_label.unsqueeze(2) == -1, 0)
         scatter_add(o, head, dim=1, out=update_node)
-        scatter_add( - relation_hidden.masked_fill(triple_label.unsqueeze(2) == -1, 0), head, dim=1, out=update_node)
+        scatter_add(
+            -relation_hidden.masked_fill(triple_label.unsqueeze(2) == -1, 0),
+            head,
+            dim=1,
+            out=update_node,
+        )
         scatter_add(count, head, dim=1, out=count_out)
 
         act = nn.ReLU()
-        update_node = self.W_s[layer_idx](concept_hidden) + self.W_n[layer_idx](update_node) / count_out.clamp(min=1).unsqueeze(2)
+        update_node = self.W_s[layer_idx](concept_hidden) + self.W_n[layer_idx](
+            update_node
+        ) / count_out.clamp(min=1).unsqueeze(2)
         update_node = act(update_node)
 
         return update_node, self.W_r[layer_idx](relation_hidden)
 
-
-
-
-    def multi_layer_gcn(self, concept_hidden, head, tail, concept_label, triple_label, layer_number=2):
+    def multi_layer_gcn(
+        self, concept_hidden, head, tail, concept_label, triple_label, layer_number=2
+    ):
         for i in range(layer_number):
-            concept_hidden = self.gcn(concept_hidden, head, tail, concept_label, triple_label, i)
+            concept_hidden = self.gcn(
+                concept_hidden, head, tail, concept_label, triple_label, i
+            )
         return concept_hidden
 
     def gcn(self, concept_hidden, head, tail, concept_label, triple_label, layer_idx):
-        '''
+        """
         concept_hidden: bsz x mem x hidden
-        '''
+        """
         bsz = head.size(0)
         mem_t = head.size(1)
         mem = concept_hidden.size(1)
         hidden_size = concept_hidden.size(2)
-        update_hidden = torch.zeros_like(concept_hidden).to(concept_hidden.device).float()
-        count = torch.ones_like(head).to(head.device).masked_fill_(triple_label == -1, 0).float()
+        update_hidden = (
+            torch.zeros_like(concept_hidden).to(concept_hidden.device).float()
+        )
+        count = (
+            torch.ones_like(head)
+            .to(head.device)
+            .masked_fill_(triple_label == -1, 0)
+            .float()
+        )
         count_out = torch.zeros(bsz, mem).to(head.device).float()
 
         o = concept_hidden.gather(1, head.unsqueeze(2).expand(bsz, mem_t, hidden_size))
@@ -812,15 +983,26 @@ class MultiHopGen(GPT2PreTrainedModel):
         scatter_add(count, head, dim=1, out=count_out)
 
         act = nn.ReLU()
-        update_hidden = self.W_s[layer_idx](concept_hidden) + self.W_n[layer_idx](update_hidden) / count_out.clamp(min=1).unsqueeze(2)
+        update_hidden = self.W_s[layer_idx](concept_hidden) + self.W_n[layer_idx](
+            update_hidden
+        ) / count_out.clamp(min=1).unsqueeze(2)
         update_hidden = act(update_hidden)
 
         return update_hidden
 
-
-
-    def multi_hop(self, triple_prob, distance, head, tail, concept_label, triple_label, gamma=0.8, iteration = 3, method="avg"):
-        '''
+    def multi_hop(
+        self,
+        triple_prob,
+        distance,
+        head,
+        tail,
+        concept_label,
+        triple_label,
+        gamma=0.8,
+        iteration=3,
+        method="avg",
+    ):
+        """
         triple_prob: bsz x L x mem_t
         distance: bsz x mem
         head, tail: bsz x mem_t
@@ -829,10 +1011,16 @@ class MultiHopGen(GPT2PreTrainedModel):
 
         Init binary vector with source concept == 1 and others 0
         expand to size: bsz x L x mem
-        '''
+        """
         concept_probs = []
         cpt_size = (triple_prob.size(0), triple_prob.size(1), distance.size(1))
-        init_mask = torch.zeros_like(distance).unsqueeze(1).expand(*cpt_size).to(distance.device).float()
+        init_mask = (
+            torch.zeros_like(distance)
+            .unsqueeze(1)
+            .expand(*cpt_size)
+            .to(distance.device)
+            .float()
+        )
         init_mask.masked_fill_((distance == 0).unsqueeze(1), 1)
         final_mask = init_mask.clone()
 
@@ -842,19 +1030,19 @@ class MultiHopGen(GPT2PreTrainedModel):
         head = head.unsqueeze(1).expand(triple_prob.size(0), triple_prob.size(1), -1)
         tail = tail.unsqueeze(1).expand(triple_prob.size(0), triple_prob.size(1), -1)
         for step in range(iteration):
-            '''
+            """
             Calculate triple head score
-            '''
+            """
             node_score = concept_probs[-1]
             triple_head_score = node_score.gather(2, head)
             triple_head_score.masked_fill_((triple_label == -1).unsqueeze(1), 0)
-            '''
+            """
             Method: 
                 - avg:
                     s(v) = Avg_{u \in N(v)} gamma * s(u) + R(u->v) 
                 - max: 
                     s(v) = max_{u \in N(v)} gamma * s(u) + R(u->v)
-            '''
+            """
             update_value = triple_head_score * gamma + triple_prob
             out = torch.zeros_like(node_score).to(node_score.device).float()
             if method == "max":
@@ -862,23 +1050,37 @@ class MultiHopGen(GPT2PreTrainedModel):
             elif method == "avg":
                 scatter_mean(update_value, tail, dim=-1, out=out)
             out.masked_fill_((concept_label == -1).unsqueeze(1), 0)
-            
+
             concept_probs.append(out)
-        
-        '''
+
+        """
         Natural decay of concept that is multi-hop away from source
-        '''
+        """
         total_concept_prob = final_mask * -1e5
         for prob in concept_probs[1:]:
             total_concept_prob += prob
         # bsz x L x mem
         return total_concept_prob
 
-    def forward(self, src_input_ids, attention_mask, src_position_ids, 
-                    target_input_ids, target_position_ids, labels, 
-                    concept_ids, concept_label, distance, 
-                    head, tail, relation, triple_label,
-                    vocab_map, map_mask, gate_label):
+    def forward(
+        self,
+        src_input_ids,
+        attention_mask,
+        src_position_ids,
+        target_input_ids,
+        target_position_ids,
+        labels,
+        concept_ids,
+        concept_label,
+        distance,
+        head,
+        tail,
+        relation,
+        triple_label,
+        vocab_map,
+        map_mask,
+        gate_label,
+    ):
 
         bsz = src_input_ids.size(0)
         mem_size = concept_ids.size(1)
@@ -887,105 +1089,176 @@ class MultiHopGen(GPT2PreTrainedModel):
 
         rel_repr = self.relation_embd(relation)
 
-        node_repr, rel_repr = self.multi_layer_comp_gcn(memory, rel_repr, head, tail, concept_label, triple_label, layer_number=self.hop_number)
+        node_repr, rel_repr = self.multi_layer_comp_gcn(
+            memory,
+            rel_repr,
+            head,
+            tail,
+            concept_label,
+            triple_label,
+            layer_number=self.hop_number,
+        )
 
-        head_repr = torch.gather(node_repr, 1, head.unsqueeze(-1).expand(node_repr.size(0), head.size(1), node_repr.size(-1)))
-        tail_repr = torch.gather(node_repr, 1, tail.unsqueeze(-1).expand(node_repr.size(0), tail.size(1), node_repr.size(-1)))
-        
-        
+        head_repr = torch.gather(
+            node_repr,
+            1,
+            head.unsqueeze(-1).expand(
+                node_repr.size(0), head.size(1), node_repr.size(-1)
+            ),
+        )
+        tail_repr = torch.gather(
+            node_repr,
+            1,
+            tail.unsqueeze(-1).expand(
+                node_repr.size(0), tail.size(1), node_repr.size(-1)
+            ),
+        )
+
         # bsz x mem_triple x hidden
         triple_repr = torch.cat((head_repr, rel_repr, tail_repr), dim=-1)
-        '''
+        """
         Training phase, merge source and target input
-        '''
-        assert(not torch.isnan(triple_repr).any().item())
+        """
+        assert not torch.isnan(triple_repr).any().item()
 
         input_ids = torch.cat([src_input_ids, target_input_ids], dim=1)
-        attention_mask = torch.cat([attention_mask, torch.ones_like(target_input_ids).to(target_input_ids.device)], dim=1)
+        attention_mask = torch.cat(
+            [
+                attention_mask,
+                torch.ones_like(target_input_ids).to(target_input_ids.device),
+            ],
+            dim=1,
+        )
         position_ids = torch.cat([src_position_ids, target_position_ids], dim=1)
-
 
         gate_mask = (gate_label != -1).float()
         gate_label.masked_fill_(gate_label == -1, 0)
-        
+
         # only optimize if has example
         lm_mask = (gate_label.sum(1) != 0).float().unsqueeze(1)
         gate_mask = lm_mask.expand_as(gate_label) * gate_mask
         # bsz x L
 
+        hybrid_probs, gate, triple_score = self.autoreg_forward(
+            input_ids,
+            attention_mask,
+            position_ids,
+            memory_dict={
+                "triple_repr": triple_repr,
+                "distance": distance,
+                "head": head,
+                "tail": tail,
+                "concept_label": concept_label,
+                "triple_label": triple_label,
+                "vocab_map": vocab_map,
+                "map_mask": map_mask,
+            },
+            lm_mask=lm_mask,
+        )
 
-        hybrid_probs, gate, triple_score = self.autoreg_forward(input_ids, 
-                            attention_mask, 
-                            position_ids, 
-                            memory_dict={"triple_repr": triple_repr,
-                                        "distance": distance,
-                                        "head": head,
-                                        "tail": tail,
-                                        "concept_label": concept_label,
-                                        "triple_label": triple_label,
-                                        "vocab_map": vocab_map,
-                                        "map_mask": map_mask},
-                            lm_mask=lm_mask)
-
-        '''
+        """
         Compute loss: gate loss and generation loss
-        '''
-        gate_loss_fn = nn.BCELoss(weight=gate_mask.view(-1), reduction='mean')
+        """
+        gate_loss_fn = nn.BCELoss(weight=gate_mask.view(-1), reduction="mean")
         gate_loss = gate_loss_fn(gate.view(-1), gate_label.view(-1).float())
 
-        gen_loss_fn = nn.NLLLoss(ignore_index=-1, reduction='mean')
+        gen_loss_fn = nn.NLLLoss(ignore_index=-1, reduction="mean")
         hybrid_probs_clamp = hybrid_probs.clamp(min=1e-5)
         triple_mask = (triple_label != -1).unsqueeze(1).expand_as(triple_score).float()
         triple_label = triple_label.unsqueeze(1).expand_as(triple_score) * triple_mask
-        triple_loss_fn = nn.BCELoss(weight=triple_mask.view(-1), reduction='mean')
-        triple_loss = triple_loss_fn(triple_score.view(-1), triple_label.view(-1).float())
+        triple_loss_fn = nn.BCELoss(weight=triple_mask.view(-1), reduction="mean")
+        triple_loss = triple_loss_fn(
+            triple_score.view(-1), triple_label.view(-1).float()
+        )
 
-        gen_loss = gen_loss_fn(hybrid_probs_clamp.log().view(-1, hybrid_probs.size(-1)), labels.view(-1))
-        assert(not torch.isinf(gen_loss).any().item())
+        gen_loss = gen_loss_fn(
+            hybrid_probs_clamp.log().view(-1, hybrid_probs.size(-1)), labels.view(-1)
+        )
+        assert not torch.isinf(gen_loss).any().item()
 
         loss = gen_loss + self.alpha * gate_loss + self.beta * triple_loss
-        
-        
+
         return loss, gen_loss, gate_loss, triple_loss
 
-    
-    def generate(self, src_input_ids, attention_mask, src_position_ids, 
-                    concept_ids, concept_label, distance, 
-                    head, tail, relation, triple_label,
-                    vocab_map, map_mask,
-                    seq_generator):
-        
+    def generate(
+        self,
+        src_input_ids,
+        attention_mask,
+        src_position_ids,
+        concept_ids,
+        concept_label,
+        distance,
+        head,
+        tail,
+        relation,
+        triple_label,
+        vocab_map,
+        map_mask,
+        seq_generator,
+    ):
+
         bsz = src_input_ids.size(0)
         mem_size = concept_ids.size(1)
 
-        
         memory = self.transformer.wte(concept_ids)
         rel_repr = self.relation_embd(relation)
 
-        node_repr, rel_repr = self.multi_layer_comp_gcn(memory, rel_repr, head, tail, concept_label, triple_label, layer_number=self.hop_number)
+        node_repr, rel_repr = self.multi_layer_comp_gcn(
+            memory,
+            rel_repr,
+            head,
+            tail,
+            concept_label,
+            triple_label,
+            layer_number=self.hop_number,
+        )
 
-        head_repr = torch.gather(node_repr, 1, head.unsqueeze(-1).expand(node_repr.size(0), head.size(1), node_repr.size(-1)))
-        tail_repr = torch.gather(node_repr, 1, tail.unsqueeze(-1).expand(node_repr.size(0), tail.size(1), node_repr.size(-1)))
-        
+        head_repr = torch.gather(
+            node_repr,
+            1,
+            head.unsqueeze(-1).expand(
+                node_repr.size(0), head.size(1), node_repr.size(-1)
+            ),
+        )
+        tail_repr = torch.gather(
+            node_repr,
+            1,
+            tail.unsqueeze(-1).expand(
+                node_repr.size(0), tail.size(1), node_repr.size(-1)
+            ),
+        )
 
         # bsz x mem_triple x hidden
         triple_repr = torch.cat((head_repr, rel_repr, tail_repr), dim=-1)
-        
-        sample = {"input_ids": src_input_ids, "attention_mask": attention_mask, "position_ids": src_position_ids}
-        memory = {"triple_repr": triple_repr,
-                                        "distance": distance,
-                                        "head": head,
-                                        "tail": tail,
-                                        "concept_label": concept_label,
-                                        "triple_label": triple_label,
-                                        "vocab_map": vocab_map,
-                                        "map_mask": map_mask}
+
+        sample = {
+            "input_ids": src_input_ids,
+            "attention_mask": attention_mask,
+            "position_ids": src_position_ids,
+        }
+        memory = {
+            "triple_repr": triple_repr,
+            "distance": distance,
+            "head": head,
+            "tail": tail,
+            "concept_label": concept_label,
+            "triple_label": triple_label,
+            "vocab_map": vocab_map,
+            "map_mask": map_mask,
+        }
 
         return seq_generator.generate(self.autoreg_forward, sample, memory)
 
-
-    def autoreg_forward(self, input_ids, attention_mask, position_ids, memory_dict, do_generate=False, lm_mask=None):
-        '''
+    def autoreg_forward(
+        self,
+        input_ids,
+        attention_mask,
+        position_ids,
+        memory_dict,
+        do_generate=False,
+        lm_mask=None,
+    ):
+        """
         memory_dict:
             - triple_repr:
             - distance:
@@ -995,12 +1268,13 @@ class MultiHopGen(GPT2PreTrainedModel):
             - vocab_map:
             - map_mask:
 
-        return: 
+        return:
             - probs: bsz x L x vocab
             - gate: bsz x L x 1
-        '''
-        hidden_states = self.transformer(input_ids, attention_mask = attention_mask, 
-                                                    position_ids = position_ids)[0]
+        """
+        hidden_states = self.transformer(
+            input_ids, attention_mask=attention_mask, position_ids=position_ids
+        )[0]
 
         if do_generate:
             hidden_states = hidden_states[:, -1, :].unsqueeze(1)
@@ -1009,42 +1283,56 @@ class MultiHopGen(GPT2PreTrainedModel):
         tanh = nn.Tanh()
         relu = nn.ReLU()
         softmax = nn.Softmax(dim=-1)
-        triple_logits = torch.matmul(hidden_states, self.triple_linear(memory_dict["triple_repr"]).transpose(1, 2))
-        
+        triple_logits = torch.matmul(
+            hidden_states,
+            self.triple_linear(memory_dict["triple_repr"]).transpose(1, 2),
+        )
+
         triple_score = sigmoid(triple_logits)
         # bsz x L x mem_t
-    
-        triple_score = triple_score.masked_fill((memory_dict["triple_label"] == -1).unsqueeze(1), 0)
+
+        triple_score = triple_score.masked_fill(
+            (memory_dict["triple_label"] == -1).unsqueeze(1), 0
+        )
 
         # aggregate probability to nodes
-        unorm_cpt_probs = self.multi_hop(triple_score, 
-                                                memory_dict["distance"], 
-                                                memory_dict["head"], 
-                                                memory_dict["tail"], 
-                                                memory_dict["concept_label"],
-                                                memory_dict["triple_label"], 
-                                                gamma = self.gamma,
-                                                iteration = self.hop_number,
-                                                method = self.aggregate_method)
-        # bsz x L x mem 
+        unorm_cpt_probs = self.multi_hop(
+            triple_score,
+            memory_dict["distance"],
+            memory_dict["head"],
+            memory_dict["tail"],
+            memory_dict["concept_label"],
+            memory_dict["triple_label"],
+            gamma=self.gamma,
+            iteration=self.hop_number,
+            method=self.aggregate_method,
+        )
+        # bsz x L x mem
         cpt_probs = softmax(unorm_cpt_probs)
         # bsz x L x mem
 
-        cpt_probs_vocab = cpt_probs.gather(2, memory_dict["vocab_map"].unsqueeze(1).expand(cpt_probs.size(0), cpt_probs.size(1), -1))
+        cpt_probs_vocab = cpt_probs.gather(
+            2,
+            memory_dict["vocab_map"]
+            .unsqueeze(1)
+            .expand(cpt_probs.size(0), cpt_probs.size(1), -1),
+        )
 
         cpt_probs_vocab.masked_fill_((memory_dict["map_mask"] == 0).unsqueeze(1), 0)
         # bsz x L x vocab
-        
+
         gate = sigmoid(self.gate_linear(hidden_states))
         # bsz x L x 1
-        
+
         lm_logits = self.lm_head(hidden_states)
         lm_probs = softmax(lm_logits)
-        
+
         if do_generate:
             hybrid_probs = lm_probs * (1 - gate) + gate * cpt_probs_vocab
         else:
-            hybrid_probs = lm_probs * (1 - gate * lm_mask.unsqueeze(1)) + gate * lm_mask.unsqueeze(1) * cpt_probs_vocab
+            hybrid_probs = (
+                lm_probs * (1 - gate * lm_mask.unsqueeze(1))
+                + gate * lm_mask.unsqueeze(1) * cpt_probs_vocab
+            )
 
         return hybrid_probs, gate, triple_score
-

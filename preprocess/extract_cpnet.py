@@ -9,7 +9,7 @@ def load_merge_relation():
     config.read("paths.cfg")
     with open(config["paths"]["merge_relation"], encoding="utf8") as f:
         for line in f.readlines():
-            ls = line.strip().split('/')
+            ls = line.strip().split("/")
             rel = ls[0]
             for l in ls:
                 if l.startswith("*"):
@@ -41,12 +41,12 @@ def extract_english():
     only_english = []
     with open(config["paths"]["conceptnet"], encoding="utf8") as f:
         for line in f.readlines():
-            ls = line.split('\t')
-            if ls[2].startswith('/c/en/') and ls[3].startswith('/c/en/'):
+            ls = line.split("\t")
+            if ls[2].startswith("/c/en/") and ls[3].startswith("/c/en/"):
                 """
                 Some preprocessing:
                     - Remove part-of-speech encoding.
-                    - Split("/")[-1] to trim the "/c/en/" and just get the entity name, convert all to 
+                    - Split("/")[-1] to trim the "/c/en/" and just get the entity name, convert all to
                     - Lowercase for uniformity.
                 """
                 rel = ls[1].split("/")[-1].lower()
