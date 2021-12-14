@@ -42,7 +42,7 @@ python graph_construction.py
 Preprocessing multi-hop relational paths for the model. Set `$DATA` to either `anlg`, `eg`, `story`.
 
 ```bash
-export DATA=eg
+export DATA=wizard
 python ground_concepts_simple.py $DATA
 python find_neighbours.py $DATA
 python filter_triple.py $DATA
@@ -74,11 +74,11 @@ python add_special_tokens.py
 The following command is an example to train the model on the trarining set and evaluate on the development set. Set `$DATA_TYPE` to either `anlg`, `eg`, `story`.
 
 ```bash
-export DATA_TYPE={anlg, eg, story}
+export DATA_TYPE=wizard
 export ROOT_PATH=..
-export DEVICE=1
+export DEVICE=5,6,7
 CUDA_VISIBLE_DEVICES=${DEVICE} \
-python3 main.py \
+python main.py \
 --train_data_file ${ROOT_PATH}/data/${DATA_TYPE}/train \
 --dev_data_file ${ROOT_PATH}/data/${DATA_TYPE}/dev \
 --test_data_file ${ROOT_PATH}/data/${DATA_TYPE}/test \

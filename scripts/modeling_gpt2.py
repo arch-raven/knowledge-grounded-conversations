@@ -1107,7 +1107,20 @@ class MultiHopGen(GPT2PreTrainedModel):
             triple_label,
             layer_number=self.hop_number,
         )
-
+        head_repr = torch.gather(
+            node_repr,
+            1,
+            head.unsqueeze(-1).expand(
+                node_repr.size(0), head.size(1), node_repr.size(-1)
+            ),
+        )
+        tail_repr = torch.gather(
+            node_repr,
+            1,
+            tail.unsqueeze(-1).expand(
+                node_repr.size(0), tail.size(1), node_repr.size(-1)
+            ),
+        )
         # bsz x mem_triple x hidden
         triple_repr = torch.cat((head_repr, rel_repr, tail_repr), dim=-1)
         """
@@ -1198,15 +1211,23 @@ class MultiHopGen(GPT2PreTrainedModel):
         rel_repr = self.relation_embd(relation)
 
         # import pdb; pdb.set_trace()
-        node_repr = self.multi_layer_gcn(
+        # node_repr = self.multi_layer_gcn(
+        #     memory,
+        #     head,
+        #     tail,
+        #     concept_label,
+        #     triple_label,
+        #     layer_number=self.hop_number,
+        # )
+        node_repr, rel_repr = self.multi_layer_comp_gcn(
             memory,
+            rel_repr,
             head,
             tail,
             concept_label,
             triple_label,
             layer_number=self.hop_number,
         )
-        # node_repr, rel_repr = self.multi_layer_comp_gcn(memory, rel_repr, head, tail, concept_label, triple_label, layer_number=self.hop_number)
 
         head_repr = torch.gather(
             node_repr,
