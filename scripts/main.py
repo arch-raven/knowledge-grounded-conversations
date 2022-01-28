@@ -557,7 +557,7 @@ class JsonDumpHelper(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def main():
+def main(args=None):
     parser = argparse.ArgumentParser()
 
     ## File parameters
@@ -735,9 +735,8 @@ def main():
     parser.add_argument(
         "--server_port", type=str, default="", help="For distant debugging."
     )
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     # default eval args
-    # args = parser.parse_args("--train_data_file data/eg/train --dev_data_file data/eg/dev --test_data_file data/eg/test --graph_path 2hops_100_directed_triple_filter.json --output_dir models/eg/grf-eg --source_length 32 --target_length 32 --model_type gpt2 --model_name_or_path models/gpt2-small --do_eval --per_gpu_train_batch_size 16 --per_gpu_eval_batch_size 16 --workers 7 --seed 42 --evaluate_metrics bleu --overwrite_output_dir --aggregate_method max --gamma 0.5".split())
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError(
@@ -849,4 +848,35 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Usage: CUDA_VISIBLE_DEVICES=4, python main.py
+    DATA_TYPE = "wizard"
+    ROOT_PATH = ".."
+    args = f"""
+    --train_data_file {ROOT_PATH}/data/{DATA_TYPE}/train \
+    --dev_data_file {ROOT_PATH}/data/{DATA_TYPE}/dev \
+    --test_data_file {ROOT_PATH}/data/{DATA_TYPE}/test \
+    --graph_path 2hops_100_directed_triple_filter.json \
+    --output_dir {ROOT_PATH}/models/{DATA_TYPE}/grf-{DATA_TYPE} \
+    --source_length 32 \
+    --target_length 32 \
+    --model_type gpt2 \
+    --model_name_or_path {ROOT_PATH}/models/gpt2-small \
+    --do_train \
+    --per_gpu_train_batch_size 16 \
+    --per_gpu_eval_batch_size 16 \
+    --workers 7 \
+    --seed 42 \
+    --evaluate_metrics ppl \
+    --overwrite_output_dir \
+    --num_train_epochs 3 \
+    --learning_rate 1e-5 \
+    --aggregate_method max \
+    --alpha 3 \
+    --beta 5 \
+    --gamma 0.5 \
+    --weight_decay 0.0 \
+    --warmup_ratio 0.0 \
+    --logging_steps 20 \
+    """
+
+    main(args.split())
