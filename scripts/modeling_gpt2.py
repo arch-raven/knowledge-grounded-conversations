@@ -469,7 +469,7 @@ class GPT2Model(GPT2PreTrainedModel):
             # Since we are adding it to the raw scores before the softmax, this is
             # effectively the same as removing these entirely.
             attention_mask = attention_mask.to(
-                dtype=next(self.parameters()).dtype
+                dtype=torch.float32
             )  # fp16 compatibility
             attention_mask = (1.0 - attention_mask) * -10000.0
 
@@ -488,7 +488,7 @@ class GPT2Model(GPT2PreTrainedModel):
                     head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)
                 )  # We can specify head_mask for each layer
             head_mask = head_mask.to(
-                dtype=next(self.parameters()).dtype
+                dtype=torch.float32
             )  # switch to fload if need + fp16 compatibility
         else:
             head_mask = [None] * self.config.n_layer

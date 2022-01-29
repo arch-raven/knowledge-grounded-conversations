@@ -254,6 +254,9 @@ def train(args, train_dataset, model, tokenizer):
             train_dataloader, desc="Iteration", disable=args.local_rank not in [-1, 0]
         )
         for step, batch in enumerate(epoch_iterator):
+            # Small iteration size for debug run
+            if args.fast_dev_run and step > args.max_steps:
+                break
             batch = tuple(t.to(args.device) for t in batch)
 
             batch_size = batch[0].size(0)
