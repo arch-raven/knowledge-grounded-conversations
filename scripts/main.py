@@ -169,11 +169,8 @@ def train(args, train_dataset, model, tokenizer):
     if getattr(train_dataset, "print_features", False):
         train_dataset.print_features()
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
-    train_sampler = (
-        RandomSampler(train_dataset)
-        if args.local_rank == -1
-        else DistributedSampler(train_dataset)
-    )
+    train_sampler = RandomSampler(train_dataset)
+
     train_dataloader = DataLoader(
         train_dataset,
         sampler=train_sampler,
@@ -235,9 +232,7 @@ def train(args, train_dataset, model, tokenizer):
     )
     logger.info(
         "  Total train batch size (w. parallel, distributed & accumulation) = %d",
-        args.train_batch_size
-        * args.gradient_accumulation_steps
-        * (torch.distributed.get_world_size() if args.local_rank != -1 else 1),
+        args.train_batch_size * args.gradient_accumulation_steps * args.n_gpu,
     )
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
@@ -413,11 +408,8 @@ def evaluate(args, model, tokenizer, evaluate_metrics="ppl", prefix="0"):
         os.makedirs(eval_output_dir)
 
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-    eval_sampler = (
-        SequentialSampler(eval_dataset)
-        if args.local_rank == -1
-        else DistributedSampler(eval_dataset)
-    )
+    eval_sampler = SequentialSampler(eval_dataset)
+
     eval_dataloader = DataLoader(
         eval_dataset,
         sampler=eval_sampler,
@@ -446,6 +438,10 @@ def evaluate(args, model, tokenizer, evaluate_metrics="ppl", prefix="0"):
     triple_Hit_num = 0
     concept_gt_Hit_num = 0
     for i, batch in tqdm(enumerate(eval_dataloader), desc="Evaluating"):
+
+        # Small iteration size for debug run
+        if args.fast_dev_run and i > 63:
+            break
 
         batch = tuple(t.to(args.device) for t in batch)
         # import pdb; pdb.set_trace()
@@ -735,8 +731,16 @@ def main(args=None):
     parser.add_argument(
         "--server_port", type=str, default="", help="For distant debugging."
     )
+    parser.add_argument(
+        "--fast_dev_run",
+        action="store_true",
+        help="Run complete process for small num_steps",
+    )
     args = parser.parse_args(args=args)
-    # default eval args
+
+    if args.fast_dev_run:
+        args.max_steps = 128
+        args.validate_steps = 64
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError(
@@ -767,34 +771,24 @@ def main(args=None):
         )
 
     # Setup CUDA, GPU & distributed training
-    if args.local_rank == -1 or args.no_cuda:
-        device = torch.device(
-            "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
-        )
-        args.n_gpu = torch.cuda.device_count()
-    else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
-        torch.distributed.init_process_group(backend="nccl")
-        args.n_gpu = 1
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
+    )
+    args.n_gpu = torch.cuda.device_count()
+
     args.device = device
 
     # Setup logging
     set_log(os.path.join(args.output_dir, "log.txt"))
     logger.warning(
-        "Process rank: %s, device: %s, n_gpu: %s, distributed training: %s, 16-bits training: %s",
-        args.local_rank,
+        "device: %s, n_gpu: %s, 16-bits training: %s",
         device,
         args.n_gpu,
-        bool(args.local_rank != -1),
         args.fp16,
     )
 
     # Set seed
     set_seed(args)
-
-    if args.local_rank not in [-1, 0]:
-        torch.distributed.barrier()  # Barrier to make sure only the first process in distributed training download model & vocab
 
     config_class, model_class, tokenizer_class = MODEL_CLASSES[args.model_type]
     tokenizer = tokenizer_class.from_pretrained(
@@ -821,9 +815,6 @@ def main(args=None):
     logger.info("-" * 100)
 
     if args.do_train:
-        if args.local_rank not in [-1, 0]:
-            torch.distributed.barrier()  # Barrier to make sure only the first process in distributed training process the dataset, and the others will use the cache
-
         train_dataset = MHDataset(
             args,
             tokenizer,
@@ -832,8 +823,6 @@ def main(args=None):
             tgt_max_length=args.target_length,
         )
         train_dataset.load()
-        if args.local_rank == 0:
-            torch.distributed.barrier()
 
         global_step, tr_loss = train(args, train_dataset, model, tokenizer)
         logger.info(" global_step = %s, average loss = %s", global_step, tr_loss)
@@ -868,7 +857,7 @@ if __name__ == "__main__":
     --seed 42 \
     --evaluate_metrics ppl \
     --overwrite_output_dir \
-    --num_train_epochs 3 \
+    --num_train_epochs 1 \
     --learning_rate 1e-5 \
     --aggregate_method max \
     --alpha 3 \
@@ -877,6 +866,7 @@ if __name__ == "__main__":
     --weight_decay 0.0 \
     --warmup_ratio 0.0 \
     --logging_steps 20 \
+    --fast_dev_run
     """
 
     main(args.split())
