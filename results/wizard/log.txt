@@ -1,0 +1,158 @@
+[01/31/2022 20:27:51 - WARNING - root] device: cuda, n_gpu: 1, 16-bits training: False
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] Model name '../models/gpt2-small' not found in model shortcut name list (gpt2, gpt2-medium, gpt2-large, distilgpt2). Assuming '../models/gpt2-small' is a path, a model identifier, or url to a directory containing tokenizer files.
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] Didn't find file ../models/gpt2-small/added_tokens.json. We won't load it.
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] Didn't find file ../models/gpt2-small/special_tokens_map.json. We won't load it.
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] Didn't find file ../models/gpt2-small/tokenizer_config.json. We won't load it.
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] loading file ../models/gpt2-small/vocab.json
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] loading file ../models/gpt2-small/merges.txt
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] loading file None
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] loading file None
+[01/31/2022 20:27:51 - INFO - transformers.tokenization_utils] loading file None
+[01/31/2022 20:27:51 - INFO - transformers.configuration_utils] loading configuration file ../models/wizard/grf-wizard/config.json
+[01/31/2022 20:27:51 - INFO - transformers.configuration_utils] Model config GPT2Config {
+  "_num_labels": 2,
+  "activation_function": "gelu_new",
+  "architectures": [
+    "MultiHopGen"
+  ],
+  "attn_pdrop": 0.1,
+  "bad_words_ids": null,
+  "bos_token_id": 50256,
+  "decoder_start_token_id": null,
+  "do_sample": false,
+  "early_stopping": false,
+  "embd_pdrop": 0.1,
+  "eos_token_id": 50256,
+  "finetuning_task": null,
+  "id2label": {
+    "0": "LABEL_0",
+    "1": "LABEL_1"
+  },
+  "initializer_range": 0.02,
+  "is_decoder": false,
+  "is_encoder_decoder": false,
+  "label2id": {
+    "LABEL_0": 0,
+    "LABEL_1": 1
+  },
+  "layer_norm_epsilon": 1e-05,
+  "length_penalty": 1.0,
+  "max_length": 20,
+  "min_length": 0,
+  "model_type": "gpt2",
+  "n_ctx": 1024,
+  "n_embd": 768,
+  "n_head": 12,
+  "n_layer": 12,
+  "n_positions": 1024,
+  "no_repeat_ngram_size": 0,
+  "num_beams": 1,
+  "num_return_sequences": 1,
+  "output_attentions": false,
+  "output_hidden_states": false,
+  "output_past": true,
+  "pad_token_id": null,
+  "prefix": null,
+  "pruned_heads": {},
+  "repetition_penalty": 1.0,
+  "resid_pdrop": 0.1,
+  "summary_activation": null,
+  "summary_first_dropout": 0.1,
+  "summary_proj_to_labels": true,
+  "summary_type": "cls_index",
+  "summary_use_proj": true,
+  "task_specific_params": {
+    "text-generation": {
+      "do_sample": true,
+      "max_length": 50
+    }
+  },
+  "temperature": 1.0,
+  "top_k": 50,
+  "top_p": 1.0,
+  "torchscript": false,
+  "use_bfloat16": false,
+  "vocab_size": 50259
+}
+
+[01/31/2022 20:27:51 - INFO - transformers.modeling_utils] loading weights file ../models/wizard/grf-wizard/pytorch_model.bin
+[01/31/2022 20:27:57 - INFO - modeling_gpt2] Tie weights in head!!!!!
+[01/31/2022 20:27:57 - INFO - modeling_gpt2] Tie weights in head!!!!!
+[01/31/2022 20:27:58 - INFO - modeling_gpt2] Tie weights in head!!!!!
+[01/31/2022 20:27:58 - INFO - modeling_gpt2] Tie weights in head!!!!!
+[01/31/2022 20:28:13 - INFO - root] ----------------------------------------------------------------------------------------------------
+[01/31/2022 20:28:13 - INFO - root] CONFIG:
+{
+    "adam_epsilon": 1e-08,
+    "aggregate_method": "max",
+    "alpha": 3.0,
+    "beta": 5.0,
+    "dev_data_file": "../data/wizard/dev",
+    "device": "cuda",
+    "do_eval": true,
+    "do_generate": false,
+    "do_train": false,
+    "evaluate_metrics": "bleu",
+    "fast_dev_run": false,
+    "fp16": false,
+    "fp16_opt_level": "O1",
+    "gamma": 0.5,
+    "gradient_accumulation_steps": 1,
+    "graph_path": "2hops_100_directed_triple_filter.json",
+    "learning_rate": 1e-05,
+    "local_rank": -1,
+    "logging_steps": 20,
+    "max_grad_norm": 1.0,
+    "max_steps": -1,
+    "model_name_or_path": "../models/gpt2-small",
+    "model_type": "gpt2",
+    "n_gpu": 1,
+    "no_cuda": false,
+    "num_train_epochs": 1,
+    "output_dir": "../models/wizard/grf-wizard_eval",
+    "overwrite_cache": false,
+    "overwrite_output_dir": true,
+    "per_gpu_eval_batch_size": 16,
+    "per_gpu_train_batch_size": 16,
+    "save_last": false,
+    "seed": 42,
+    "server_ip": "",
+    "server_port": "",
+    "source_length": 32,
+    "target_length": 32,
+    "tb_log_dir": null,
+    "test_data_file": "../data/wizard/test",
+    "train_data_file": "../data/wizard/train",
+    "validate_steps": 3200,
+    "warmup_ratio": 0.0,
+    "weight_decay": 0.0,
+    "workers": 7
+}
+[01/31/2022 20:28:13 - INFO - root] ----------------------------------------------------------------------------------------------------
+[01/31/2022 20:28:17 - INFO - root] --------------------------------------------------Features--------------------------------------------------
+[01/31/2022 20:28:17 - INFO - root] Input: ['Ġblue', 'Ġ.', '<|endoftext|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>']
+[01/31/2022 20:28:17 - INFO - root] Attention mask: [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[01/31/2022 20:28:17 - INFO - root] Position: [0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[01/31/2022 20:28:17 - INFO - root] Target: []
+[01/31/2022 20:28:17 - INFO - root] Position: []
+[01/31/2022 20:28:17 - INFO - root] Labels: []
+[01/31/2022 20:28:17 - INFO - root] Gate labels: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+[01/31/2022 20:28:17 - INFO - root] Input: ['Ġblue', 'Ġis', 'Ġmy', 'Ġfavorite', 'Ġprimary', 'Ġcolor', '.', 'Ġblue', 'Ġis', 'Ġalways', 'Ġnice', '.', 'Ġi', 'Ġlike', 'Ġroyal', 'Ġblue', '.', '<|endoftext|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>', '<|pad|>']
+[01/31/2022 20:28:17 - INFO - root] Attention mask: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[01/31/2022 20:28:17 - INFO - root] Position: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+[01/31/2022 20:28:17 - INFO - root] Target: []
+[01/31/2022 20:28:17 - INFO - root] Position: []
+[01/31/2022 20:28:17 - INFO - root] Labels: []
+[01/31/2022 20:28:17 - INFO - root] Gate labels: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+[01/31/2022 20:28:17 - INFO - root] Input: ['Ġi', 'Ġonce', 'Ġroad', 'Ġon', 'Ġthe', 'Ġroyal', 'Ġblue', 'Ġtrain', 'Ġfrom', 'Ġnew', 'Ġy', 'ork', 'Ġto', 'Ġd', '.', 'c', 'Ġ.', 'Ġoh', 'Ġthat', 'Ġsounds', 'Ġreally', 'Ġnice', '.', 'Ġi', 'Ġbet', 'Ġthere', 'Ġwas', 'Ġa', 'Ġlot', 'Ġof', 'Ġscenery', 'Ġand']
+[01/31/2022 20:28:17 - INFO - root] Attention mask: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+[01/31/2022 20:28:17 - INFO - root] Position: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+[01/31/2022 20:28:17 - INFO - root] Target: []
+[01/31/2022 20:28:17 - INFO - root] Position: []
+[01/31/2022 20:28:17 - INFO - root] Labels: []
+[01/31/2022 20:28:17 - INFO - root] Gate labels: [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]
+[01/31/2022 20:28:17 - INFO - root] ***** Running evaluation *****
+[01/31/2022 20:28:17 - INFO - root]   Num examples = 3864
+[01/31/2022 20:28:17 - INFO - root]   Batch size = 16
+[01/31/2022 20:38:20 - INFO - root] Save generation result in ../models/wizard/grf-wizard_eval/result_ep:test.txt
+[01/31/2022 20:38:20 - INFO - root] Test evaluate bleu: 0.0103
