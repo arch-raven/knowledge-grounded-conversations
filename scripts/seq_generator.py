@@ -3,8 +3,8 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import pdb
 import math
-
 import torch
 
 from fairseq import search, utils
@@ -129,7 +129,7 @@ class SequenceGenerator(object):
         memory,
         prefix_tokens=None,
         output_text=True,
-        **kwargs
+        **kwargs,
     ):
         # if not self.retain_dropout:
         #    model.eval()
@@ -520,7 +520,9 @@ class SequenceGenerator(object):
             assert num_remaining_sent >= 0
             if num_remaining_sent == 0:
                 break
-            assert step < max_len
+            if step >= max_len:
+                break
+            assert step < max_len, f"{step} < {max_len}"
 
             if len(finalized_sents) > 0:
                 new_bsz = bsz - len(finalized_sents)
@@ -664,7 +666,11 @@ class SequenceGenerator(object):
         result_strs = []
         result_scores = []
         for j, hypo in enumerate(finalized):
-            hypo = hypo[0]
+            try:
+                hypo = hypo[0]
+            except Exception as e:
+                print(e, f"len(hypo) = {len(hypo)}")
+                pdb.set_trace()
             hypo_tokens = hypo["tokens"]
             hypo_gates = hypo["gates"]
             result_scores.append(hypo["score"])

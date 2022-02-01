@@ -467,8 +467,11 @@ def evaluate(args, model, tokenizer, evaluate_metrics="ppl", prefix="0"):
                     "map_mask": batch[14],
                     "seq_generator": generator,
                 }
-                continue
-                hypos = model.generate(**batch)
+                # continue
+                if hasattr(model, "module"):
+                    hypos = model.module.generate(**batch)
+                else:
+                    hypos = model.generate(**batch)
                 gen_seqs.extend(hypos)
 
         nb_eval_steps += 1
@@ -742,8 +745,8 @@ def main(args=None):
     args = parser.parse_args(args=args)
 
     if args.fast_dev_run:
-        args.max_steps = 128
-        args.validate_steps = 64
+        args.max_steps = 16
+        args.validate_steps = 8
 
     if args.model_type in ["bert", "roberta", "distilbert"] and not args.mlm:
         raise ValueError(
@@ -853,12 +856,12 @@ if __name__ == "__main__":
     --target_length 32 \
     --model_type gpt2 \
     --model_name_or_path {ROOT_PATH}/models/gpt2-small \
-    --do_train \
+    --do_eval \
     --per_gpu_train_batch_size 16 \
     --per_gpu_eval_batch_size 16 \
     --workers 7 \
     --seed 42 \
-    --evaluate_metrics ppl \
+    --evaluate_metrics bleu \
     --overwrite_output_dir \
     --num_train_epochs 1 \
     --learning_rate 1e-5 \
@@ -869,7 +872,6 @@ if __name__ == "__main__":
     --weight_decay 0.0 \
     --warmup_ratio 0.0 \
     --logging_steps 20 \
-    --fast_dev_run
     """
-
+    # --fast_dev_run
     main(args.split())
