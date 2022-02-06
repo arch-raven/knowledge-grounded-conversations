@@ -232,7 +232,7 @@ def train(args, train_dataset, model, tokenizer):
     )
     logger.info(
         "  Total train batch size (w. parallel, distributed & accumulation) = %d",
-        args.train_batch_size * args.gradient_accumulation_steps * args.n_gpu,
+        args.train_batch_size * args.gradient_accumulation_steps,
     )
     logger.info("  Gradient Accumulation steps = %d", args.gradient_accumulation_steps)
     logger.info("  Total optimization steps = %d", t_total)
@@ -856,14 +856,14 @@ if __name__ == "__main__":
     --target_length 32 \
     --model_type gpt2 \
     --model_name_or_path {ROOT_PATH}/models/gpt2-small \
-    --do_eval \
+    --do_train \
     --per_gpu_train_batch_size 16 \
     --per_gpu_eval_batch_size 16 \
     --workers 7 \
     --seed 42 \
     --evaluate_metrics bleu \
     --overwrite_output_dir \
-    --num_train_epochs 1 \
+    --num_train_epochs 5 \
     --learning_rate 1e-5 \
     --aggregate_method max \
     --alpha 3 \
