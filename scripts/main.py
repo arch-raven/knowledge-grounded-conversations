@@ -401,6 +401,7 @@ def evaluate(args, model, tokenizer, evaluate_metrics="ppl", prefix="0"):
         tokenizer,
         eval_data_file,
         src_max_length=args.source_length,
+        knowledge_max_length=args.knowledge_length,
         tgt_max_length=args.target_length,
         do_generate=evaluate_metrics == "bleu",
     )
@@ -593,6 +594,7 @@ def main(args=None):
 
     ## My parameters
     parser.add_argument("--source_length", default=16, type=int)
+    parser.add_argument("--knowledge_length", default=16, type=int)
     parser.add_argument("--target_length", default=16, type=int)
     parser.add_argument("--tb_log_dir", default=None, type=str)
     parser.add_argument(
@@ -826,6 +828,7 @@ def main(args=None):
             tokenizer,
             args.train_data_file,
             src_max_length=args.source_length,
+            knowledge_max_length=args.knowledge_length,
             tgt_max_length=args.target_length,
         )
         train_dataset.load()
@@ -853,10 +856,11 @@ if __name__ == "__main__":
     --graph_path 2hops_100_directed_triple_filter.json \
     --output_dir {ROOT_PATH}/models/{DATA_TYPE}/grf-{DATA_TYPE} \
     --source_length 32 \
+    --knowledge_length 32 \
     --target_length 32 \
     --model_type gpt2 \
     --model_name_or_path {ROOT_PATH}/models/gpt2-small \
-    --do_train \
+    --do_eval \
     --per_gpu_train_batch_size 16 \
     --per_gpu_eval_batch_size 16 \
     --workers 7 \

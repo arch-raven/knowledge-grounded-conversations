@@ -31,6 +31,7 @@ class MHDataset(Dataset):
         tokenizer,
         data_path,
         src_max_length=256,
+        knowledge_max_length=256,
         tgt_max_length=64,
         do_generate=False,
         max_memory_size=400,
@@ -39,6 +40,7 @@ class MHDataset(Dataset):
         self.do_generate = do_generate
         self.args = args
         self.src_max_length = src_max_length
+        self.knowledge_max_length = knowledge_max_length
         self.tgt_max_length = tgt_max_length
         self.tokenizer = tokenizer
         self.max_memory_size = max_memory_size
@@ -52,6 +54,7 @@ class MHDataset(Dataset):
         data_path = self.data_path
         self.source = []
         self.source_kg = []
+        self.knowledge = []
         self.target = []
         self.source_path = os.path.join(data_path, "source.csv")
         count = 0
@@ -69,6 +72,16 @@ class MHDataset(Dataset):
                     self.target.append(row[1:])
                 else:
                     self.target.append(row[1])
+
+        count = 0
+        self.knowledge_path = os.path.join(data_path, "knowledge.csv")
+        with open(self.knowledge_path, "r") as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=",")
+            for row in csv_reader:
+                if self.do_generate:
+                    self.knowledge.append(row[1:])
+                else:
+                    self.knowledge.append(row[1])
 
         count = 0
         self.concepts = []
@@ -121,6 +134,7 @@ class MHDataset(Dataset):
 
     def __getitem__(self, idx):
         src = self.source[idx]
+        knlg = self.knowledge[idx]
         tgt = self.target[idx]
         concept = self.concepts[idx]
         cpt_label = self.concepts_labels[idx]
@@ -217,6 +231,25 @@ class MHDataset(Dataset):
             src_position_ids += [0]
             attention_mask += [0]
 
+        # tokenize knowledge
+        knowledge_input_ids = []
+        for k in knlg:
+            knowledge_input_ids.extend(self.tokenizer.encode(" " + k))
+            knowledge_input_ids.append(self.eos)
+        knowledge_position_ids = list(range(0, len(knowledge_input_ids)))
+
+        assert len(knowledge_input_ids) == len(knowledge_position_ids)
+        if len(knowledge_input_ids) > self.knowledge_max_length:
+            knowledge_input_ids = knowledge_input_ids[: self.knowledge_max_length]
+            knowledge_position_ids = knowledge_position_ids[: self.knowledge_max_length]
+
+        knowledge_attention_mask = [1] * len(knowledge_input_ids)
+
+        while len(knowledge_input_ids) < self.knowledge_max_length:
+            knowledge_input_ids += [self.pad]
+            knowledge_position_ids += [0]
+            knowledge_attention_mask += [0]
+
         target_input_ids = []
         target_position_ids = []
         labels = []
@@ -247,6 +280,9 @@ class MHDataset(Dataset):
             torch.tensor(src_input_ids),
             torch.tensor(attention_mask),
             torch.tensor(src_position_ids),
+            torch.tensor(knowledge_input_ids),
+            torch.tensor(knowledge_attention_mask),
+            torch.tensor(knowledge_position_ids),
             torch.tensor(target_input_ids),
             torch.tensor(target_position_ids),
             torch.tensor(labels),

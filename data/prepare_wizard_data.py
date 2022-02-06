@@ -5,6 +5,7 @@ import csv
 # import pandas as pd
 source_path = "/home1/deeksha/aditya/multigen/data/wizard/{}/source.csv"
 target_path = "/home1/deeksha/aditya/multigen/data/wizard/{}/target.csv"
+knowledge_path = "/home1/deeksha/aditya/multigen/data/wizard/{}/knowledge.csv"
 
 
 def write_csv_(list_of_texts, save_to_path):
@@ -19,6 +20,7 @@ def write_csv_(list_of_texts, save_to_path):
 def prepare_data(jsonl_file, stage: str):
     assert stage in ["train", "dev", "test"]
     source_sentences = []
+    knowledge_sentences = []
     target_sentences = []
 
     with open(jsonl_file, "r", encoding="utf-8") as f:
@@ -26,15 +28,23 @@ def prepare_data(jsonl_file, stage: str):
             data = json.loads(line)
             history = data["history"]
             response = data["response"]
-            assert type(history) == list and type(response) == str
+            knowledge = data["knowledge"][0]  # first knowledge is Knowledge used
+            assert (
+                type(history) == list
+                and type(response) == str
+                and type(knowledge) == str
+            )
             history = [" ".join(text.split()) for text in history]
             response = " ".join(response.split())
+            knowledge = knowledge.split("__knowledge__")[-1].strip()
 
             source_sentences.append(" ".join(history))
             target_sentences.append(response)
+            knowledge_sentences.append(knowledge)
 
     write_csv_(source_sentences, source_path.format(stage))
     write_csv_(target_sentences, target_path.format(stage))
+    write_csv_(knowledge_sentences, knowledge_path.format(stage))
 
 
 if __name__ == "__main__":
