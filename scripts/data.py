@@ -114,23 +114,37 @@ class MHDataset(Dataset):
         exs = [self.__getitem__(i) for i in range(0, min(3, len(self.concepts)))]
         for ex in exs:
             logger.info(
-                "Input: {}".format([self.tokenizer.decoder[x] for x in ex[0].tolist()])
+                "Input: {}".format(
+                    [self.tokenizer.decoder[x] for x in ex["src_input_ids"].tolist()]
+                )
             )
-            logger.info("Attention mask: {}".format(ex[1].tolist()))
-            logger.info("Position: {}".format(ex[2].tolist()))
+            logger.info("Attention mask: {}".format(ex["attention_mask"].tolist()))
+            logger.info("Position: {}".format(ex["src_position_ids"].tolist()))
             logger.info(
-                "Target: {}".format([self.tokenizer.decoder[x] for x in ex[3].tolist()])
+                "Knowledge: {}".format(
+                    [
+                        self.tokenizer.decoder[x]
+                        for x in ex["knowledge_input_ids"].tolist()
+                    ]
+                )
             )
-            logger.info("Position: {}".format(ex[4].tolist()))
+            logger.info(
+                "Target: {}".format(
+                    [self.tokenizer.decoder[x] for x in ex["target_input_ids"].tolist()]
+                )
+            )
+            logger.info("Position: {}".format(ex["target_position_ids"].tolist()))
             logger.info(
                 "Labels: {}".format(
                     [
                         self.tokenizer.decoder[x]
-                        for x in (ex[5].masked_select(ex[5] >= 0).tolist())
+                        for x in (
+                            ex["labels"].masked_select(ex["labels"] >= 0).tolist()
+                        )
                     ]
                 )
             )
-            logger.info("Gate labels: {}".format(ex[-1].tolist()))
+            logger.info("Gate labels: {}".format(ex["gate_labels"].tolist()))
 
     def __getitem__(self, idx):
         src = self.source[idx]
@@ -276,24 +290,24 @@ class MHDataset(Dataset):
 
         assert len(concept_ids) == self.max_memory_size, len(concept_ids)
         assert len(distance) == self.max_memory_size, len(distance)
-        return (
-            torch.tensor(src_input_ids),
-            torch.tensor(attention_mask),
-            torch.tensor(src_position_ids),
-            torch.tensor(knowledge_input_ids),
-            torch.tensor(knowledge_attention_mask),
-            torch.tensor(knowledge_position_ids),
-            torch.tensor(target_input_ids),
-            torch.tensor(target_position_ids),
-            torch.tensor(labels),
-            torch.tensor(concept_ids),
-            torch.tensor(concept_label),
-            torch.tensor(distance),
-            torch.tensor(head_ids_trunc),
-            torch.tensor(tail_ids_trunc),
-            torch.tensor(relations_trunc),
-            torch.tensor(triple_labels_trunc),
-            torch.tensor(vocab_map),
-            torch.tensor(map_mask),
-            torch.tensor(gate_labels),
-        )
+        return {
+            "src_input_ids": torch.tensor(src_input_ids),
+            "attention_mask": torch.tensor(attention_mask),
+            "src_position_ids": torch.tensor(src_position_ids),
+            "target_input_ids": torch.tensor(target_input_ids),
+            "target_position_ids": torch.tensor(target_position_ids),
+            "labels": torch.tensor(labels),
+            "concept_ids": torch.tensor(concept_ids),
+            "concept_label": torch.tensor(concept_label),
+            "distance": torch.tensor(distance),
+            "head_ids_trunc": torch.tensor(head_ids_trunc),
+            "tail_ids_trunc": torch.tensor(tail_ids_trunc),
+            "relations_trunc": torch.tensor(relations_trunc),
+            "triple_labels_trunc": torch.tensor(triple_labels_trunc),
+            "vocab_map": torch.tensor(vocab_map),
+            "map_mask": torch.tensor(map_mask),
+            "knowledge_input_ids": torch.tensor(knowledge_input_ids),
+            "knowledge_attention_mask": torch.tensor(knowledge_attention_mask),
+            "knowledge_position_ids": torch.tensor(knowledge_position_ids),
+            "gate_labels": torch.tensor(gate_labels),
+        }
