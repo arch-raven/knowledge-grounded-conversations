@@ -1270,6 +1270,9 @@ class MultiHopGen(GPT2PreTrainedModel):
         input_ids,
         attention_mask,
         position_ids,
+        knowledge_input_ids,
+        knowledge_attention_mask,
+        knowledge_position_ids,
         memory_dict,
         do_generate=False,
         lm_mask=None,
@@ -1285,14 +1288,23 @@ class MultiHopGen(GPT2PreTrainedModel):
             - map_mask:
 
         return:
-            - probs: bsz x L x vocab
+            - probs: bsz x L x vocab; What is the exact value of L?is it 100?
             - gate: bsz x L x 1
         """
         hidden_states = self.transformer(
             input_ids, attention_mask=attention_mask, position_ids=position_ids
         )[0]
 
+        # response ids are there in inputs_ids or not? -> Yes
+
+        # knowledge_hidden_states = self.transformer(
+        #     knowledge_input_ids,
+        #     attention_mask=knowledge_attention_mask,
+        #     position_ids=knowledge_position_ids,
+        # )[0]
+
         if do_generate:
+            # why this -1 selection? -> To select tokens generated in last step
             hidden_states = hidden_states[:, -1, :].unsqueeze(1)
 
         sigmoid = nn.Sigmoid()
@@ -1303,6 +1315,27 @@ class MultiHopGen(GPT2PreTrainedModel):
             hidden_states,
             self.triple_linear(memory_dict["triple_repr"]).transpose(1, 2),
         )
+
+        # knowledge_logits = torch.matmul(
+        #     hidden_states,  # B,src_length,H #confirm shapes
+        #     knowledge_hidden_states.transpose(1, 2),  # B,H,T
+        # )
+
+        # b, L, kb_L
+
+        # weighted knowledge =
+
+        # knowledge_triple_logits = torch.matmul(
+        #     knowledge_hidden_states,
+        #     self.triple_linear(memory_dict["triple_repr"]).transpose(1, 2),
+        # )
+
+        # knowledge_triple_score = sigmoid(knowledge_triple_logits)
+        # # bsz x kb_L x mem_t
+
+        # knowledge_triple_score = knowledge_triple_score.masked_fill(
+        #     (memory_dict["triple_label"] == -1).unsqueeze(1), 0
+        # )
 
         triple_score = sigmoid(triple_logits)
         # bsz x L x mem_t
@@ -1337,18 +1370,51 @@ class MultiHopGen(GPT2PreTrainedModel):
         cpt_probs_vocab.masked_fill_((memory_dict["map_mask"] == 0).unsqueeze(1), 0)
         # bsz x L x vocab
 
+        # kbt_probs = softmax(knowledge_triple_score)
+        # kbt_probs_vocab = kbt_probs.gather(
+        #     2,
+        #     memory_dict["vocab_map"]
+        #     .unsqueeze(1)
+        #     .expand(kbt_probs.size(0), kbt_probs.size(1), -1),
+        # )
+
+        # kbt_probs_vocab.masked_fill_((memory_dict["map_mask"] == 0).unsqueeze(1), 0)
+
         gate = sigmoid(self.gate_linear(hidden_states))
+
         # bsz x L x 1
+
+        # kb_gate = sigmoid(self.gate_linear(knowledge_hidden_states))
+
+        # bsz x (L) x 1
+        # knowledge_lm_logits = self.lm_head(
+        #     torch.cat([hidden_states, knowledge_hidden_states], dim=1)
+        # )
 
         lm_logits = self.lm_head(hidden_states)
         lm_probs = softmax(lm_logits)
 
         if do_generate:
             hybrid_probs = lm_probs * (1 - gate) + gate * cpt_probs_vocab
+            # hybrid_kbt_probs = hybrid_probs * (1 - kb_gate) + kb_gate * kbt_probs_vocab
+
         else:
             hybrid_probs = (
                 lm_probs * (1 - gate * lm_mask.unsqueeze(1))
                 + gate * lm_mask.unsqueeze(1) * cpt_probs_vocab
             )
 
+            # hybrid_kbt_probs = (
+            #     hybrid_probs * (1 - kb_gate * lm_mask.unsqueeze(1))
+            #     + kb_gate * lm_mask.unsqueeze(1) * kbt_probs_vocab
+            # )
+
+        # What is lm_mask?
+
+        # size of hybrid probs?
+        # Where exactly are the decoder_ids passes?
+        #  What comprises the inputs_ids?
+
         return hybrid_probs, gate, triple_score
+
+        # return hybrid_kbt_probs, gate, triple_score

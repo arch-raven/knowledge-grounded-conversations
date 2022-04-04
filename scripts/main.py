@@ -858,7 +858,7 @@ if __name__ == "__main__":
     --target_length 32 \
     --model_type gpt2 \
     --model_name_or_path {ROOT_PATH}/models/gpt2-small \
-    --do_eval \
+    --do_train \
     --per_gpu_train_batch_size 16 \
     --per_gpu_eval_batch_size 16 \
     --workers 7 \
@@ -874,7 +874,7 @@ if __name__ == "__main__":
     --weight_decay 0.0 \
     --warmup_ratio 0.0 \
     --logging_steps 20 \
+    --fast_dev_run
     """
-    #--fast_dev_run
-    
+
     main(args.split())

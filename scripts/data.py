@@ -297,6 +297,8 @@ class MHDataset(Dataset):
             "target_input_ids": torch.tensor(target_input_ids),
             "target_position_ids": torch.tensor(target_position_ids),
             "labels": torch.tensor(labels),
+            ##########################################
+            # Copy for Knowledge subgraph
             "concept_ids": torch.tensor(concept_ids),
             "concept_label": torch.tensor(concept_label),
             "distance": torch.tensor(distance),
@@ -306,6 +308,7 @@ class MHDataset(Dataset):
             "triple_labels_trunc": torch.tensor(triple_labels_trunc),
             "vocab_map": torch.tensor(vocab_map),
             "map_mask": torch.tensor(map_mask),
+            ##########################################
             "knowledge_input_ids": torch.tensor(knowledge_input_ids),
             "knowledge_attention_mask": torch.tensor(knowledge_attention_mask),
             "knowledge_position_ids": torch.tensor(knowledge_position_ids),
