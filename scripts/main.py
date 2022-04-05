@@ -874,7 +874,6 @@ if __name__ == "__main__":
     --weight_decay 0.0 \
     --warmup_ratio 0.0 \
     --logging_steps 20 \
-    --fast_dev_run
     """
 
     main(args.split())
