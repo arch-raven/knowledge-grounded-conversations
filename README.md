@@ -39,7 +39,7 @@ python extract_cpnet.py
 python graph_construction.py
 ```
 
-Preprocessing multi-hop relational paths for the model. Set `$DATA` to either `anlg`, `eg`, `story`.
+Preprocessing multi-hop relational paths for the model. Set `$DATA` to either `anlg`, `eg`, `story`, `wizard`.
 
 ```bash
 export DATA=wizard
@@ -71,7 +71,7 @@ python add_special_tokens.py
 
 ### Training 
 
-The following command is an example to train the model on the trarining set and evaluate on the development set. Set `$DATA_TYPE` to either `anlg`, `eg`, `story`.
+The following command is an example to train the model on the trarining set and evaluate on the development set. Set `$DATA_TYPE` to either `anlg`, `eg`, `story`, `wizard`.
 
 ```bash
 export DATA_TYPE=wizard

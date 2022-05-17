@@ -120,14 +120,14 @@ class MHDataset(Dataset):
             )
             logger.info("Attention mask: {}".format(ex["attention_mask"].tolist()))
             logger.info("Position: {}".format(ex["src_position_ids"].tolist()))
-            logger.info(
-                "Knowledge: {}".format(
-                    [
-                        self.tokenizer.decoder[x]
-                        for x in ex["knowledge_input_ids"].tolist()
-                    ]
-                )
-            )
+            # logger.info(
+            #     "Knowledge: {}".format(
+            #         [
+            #             self.tokenizer.decoder[x]
+            #             for x in ex["knowledge_input_ids"].tolist()
+            #         ]
+            #     )
+            # )
             logger.info(
                 "Target: {}".format(
                     [self.tokenizer.decoder[x] for x in ex["target_input_ids"].tolist()]
@@ -160,6 +160,16 @@ class MHDataset(Dataset):
         relations = [x[0] for x in relations]
 
         assert len(dist) == len(concept)
+
+        # import pdb
+
+        # pdb.set_trace()
+        if type(knlg) == str:
+            knlg = [knlg]
+        assert type(src) == list
+        assert type(knlg) == list
+        # Use `knowledge`+`context` to generate `response`
+        src = knlg + src
 
         concept_ids = []
         _concept_ids = []
@@ -235,8 +245,8 @@ class MHDataset(Dataset):
 
         assert len(src_input_ids) == len(src_position_ids)
         if len(src_input_ids) > self.src_max_length:
-            src_input_ids = src_input_ids[: self.src_max_length]
-            src_position_ids = src_position_ids[: self.src_max_length]
+            src_input_ids = src_input_ids[-self.src_max_length :]
+            src_position_ids = src_position_ids[-self.src_max_length :]
 
         attention_mask = [1] * len(src_input_ids)
 
@@ -245,24 +255,24 @@ class MHDataset(Dataset):
             src_position_ids += [0]
             attention_mask += [0]
 
-        # tokenize knowledge
-        knowledge_input_ids = []
-        for k in knlg:
-            knowledge_input_ids.extend(self.tokenizer.encode(" " + k))
-            knowledge_input_ids.append(self.eos)
-        knowledge_position_ids = list(range(0, len(knowledge_input_ids)))
+        # # tokenize knowledge
+        # knowledge_input_ids = []
+        # for k in knlg:
+        #     knowledge_input_ids.extend(self.tokenizer.encode(" " + k))
+        #     knowledge_input_ids.append(self.eos)
+        # knowledge_position_ids = list(range(0, len(knowledge_input_ids)))
 
-        assert len(knowledge_input_ids) == len(knowledge_position_ids)
-        if len(knowledge_input_ids) > self.knowledge_max_length:
-            knowledge_input_ids = knowledge_input_ids[: self.knowledge_max_length]
-            knowledge_position_ids = knowledge_position_ids[: self.knowledge_max_length]
+        # assert len(knowledge_input_ids) == len(knowledge_position_ids)
+        # if len(knowledge_input_ids) > self.knowledge_max_length:
+        #     knowledge_input_ids = knowledge_input_ids[: self.knowledge_max_length]
+        #     knowledge_position_ids = knowledge_position_ids[: self.knowledge_max_length]
 
-        knowledge_attention_mask = [1] * len(knowledge_input_ids)
+        # knowledge_attention_mask = [1] * len(knowledge_input_ids)
 
-        while len(knowledge_input_ids) < self.knowledge_max_length:
-            knowledge_input_ids += [self.pad]
-            knowledge_position_ids += [0]
-            knowledge_attention_mask += [0]
+        # while len(knowledge_input_ids) < self.knowledge_max_length:
+        #     knowledge_input_ids += [self.pad]
+        #     knowledge_position_ids += [0]
+        #     knowledge_attention_mask += [0]
 
         target_input_ids = []
         target_position_ids = []
@@ -297,6 +307,8 @@ class MHDataset(Dataset):
             "target_input_ids": torch.tensor(target_input_ids),
             "target_position_ids": torch.tensor(target_position_ids),
             "labels": torch.tensor(labels),
+            ##########################################
+            # Copy for Knowledge subgraph
             "concept_ids": torch.tensor(concept_ids),
             "concept_label": torch.tensor(concept_label),
             "distance": torch.tensor(distance),
@@ -306,8 +318,9 @@ class MHDataset(Dataset):
             "triple_labels_trunc": torch.tensor(triple_labels_trunc),
             "vocab_map": torch.tensor(vocab_map),
             "map_mask": torch.tensor(map_mask),
-            "knowledge_input_ids": torch.tensor(knowledge_input_ids),
-            "knowledge_attention_mask": torch.tensor(knowledge_attention_mask),
-            "knowledge_position_ids": torch.tensor(knowledge_position_ids),
+            ##########################################
+            # "knowledge_input_ids": torch.tensor(knowledge_input_ids),
+            # "knowledge_attention_mask": torch.tensor(knowledge_attention_mask),
+            # "knowledge_position_ids": torch.tensor(knowledge_position_ids),
             "gate_labels": torch.tensor(gate_labels),
         }

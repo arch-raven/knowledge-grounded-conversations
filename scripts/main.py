@@ -247,7 +247,9 @@ def train(args, train_dataset, model, tokenizer):
     )
 
     if args.validate_steps == -1:
-        args.validate_steps = len(train_dataloader)
+        args.validate_steps = t_total
+
+    ## Training
     for epoch in train_iterator:
         local_step = 0
         epoch_iterator = tqdm(
@@ -330,55 +332,35 @@ def train(args, train_dataset, model, tokenizer):
                     )
                     logging_loss = tr_loss
 
-            if (step + 1) % args.validate_steps == 0:
-                sign_list = {"ppl": 1.0, "bleu": -1.0, "acc": -1.0}
-                result = evaluate(
-                    args, model, tokenizer, args.evaluate_metrics, prefix=epoch
-                )
-                # logger.info(result)
-                logger.info(
-                    "Epoch {} evaluate {}: {:.4f}".format(
-                        epoch, args.evaluate_metrics, result[args.evaluate_metrics]
-                    )
-                )
-                if (
-                    args.save_last
-                    or (
-                        result[args.evaluate_metrics]
-                        - best_valid[args.evaluate_metrics]
-                    )
-                    * sign_list[args.evaluate_metrics]
-                    < 0
-                ):
-                    model_to_save = (
-                        model.module if hasattr(model, "module") else model
-                    )  # Take care of distributed/parallel training
-                    model_to_save.save_pretrained(args.output_dir)
-                    torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
-                    torch.save(
-                        scheduler.state_dict(),
-                        os.path.join(args.output_dir, "scheduler.bin"),
-                    )
-                    torch.save(
-                        optimizer.state_dict(),
-                        os.path.join(args.output_dir, "optimizer.bin"),
-                    )
-                    subprocess.call(
-                        [
-                            "cp",
-                            os.path.join(args.model_name_or_path, "vocab.json"),
-                            args.output_dir,
-                        ]
-                    )
-                    subprocess.call(
-                        [
-                            "cp",
-                            os.path.join(args.model_name_or_path, "merges.txt"),
-                            args.output_dir,
-                        ]
-                    )
-                    logger.info("Saving model checkpoint to %s", args.output_dir)
-                    best_valid[args.evaluate_metrics] = result[args.evaluate_metrics]
+    ## Save model at the end of training
+    model_to_save = (
+        model.module if hasattr(model, "module") else model
+    )  # Take care of distributed/parallel training
+    model_to_save.save_pretrained(args.output_dir)
+    torch.save(args, os.path.join(args.output_dir, "training_args.bin"))
+    torch.save(
+        scheduler.state_dict(),
+        os.path.join(args.output_dir, "scheduler.bin"),
+    )
+    torch.save(
+        optimizer.state_dict(),
+        os.path.join(args.output_dir, "optimizer.bin"),
+    )
+    subprocess.call(
+        [
+            "cp",
+            os.path.join(args.model_name_or_path, "vocab.json"),
+            args.output_dir,
+        ]
+    )
+    subprocess.call(
+        [
+            "cp",
+            os.path.join(args.model_name_or_path, "merges.txt"),
+            args.output_dir,
+        ]
+    )
+    logger.info("Saving model checkpoint to %s", args.output_dir)
 
     return global_step, tr_loss / global_step
 
@@ -847,20 +829,22 @@ if __name__ == "__main__":
     # Usage: CUDA_VISIBLE_DEVICES=4, python main.py
     DATA_TYPE = "wizard"
     ROOT_PATH = ".."
+    EXPT_NAME = "exp-1-512"
     args = f"""
     --train_data_file {ROOT_PATH}/data/{DATA_TYPE}/train \
     --dev_data_file {ROOT_PATH}/data/{DATA_TYPE}/dev \
     --test_data_file {ROOT_PATH}/data/{DATA_TYPE}/test \
     --graph_path 2hops_100_directed_triple_filter.json \
-    --output_dir {ROOT_PATH}/models/{DATA_TYPE}/grf-{DATA_TYPE} \
-    --source_length 32 \
-    --knowledge_length 32 \
-    --target_length 32 \
+    --output_dir {ROOT_PATH}/models/{DATA_TYPE}/{EXPT_NAME} \
+    --source_length 512 \
+    --knowledge_length 512 \
+    --target_length 512 \
     --model_type gpt2 \
     --model_name_or_path {ROOT_PATH}/models/gpt2-small \
-    --do_eval \
-    --per_gpu_train_batch_size 16 \
-    --per_gpu_eval_batch_size 16 \
+    --do_train \
+    --gradient_accumulation_steps 8 \
+    --per_gpu_train_batch_size 1 \
+    --per_gpu_eval_batch_size 8 \
     --workers 7 \
     --seed 42 \
     --evaluate_metrics bleu \
@@ -874,7 +858,6 @@ if __name__ == "__main__":
     --weight_decay 0.0 \
     --warmup_ratio 0.0 \
     --logging_steps 20 \
+    --validate_steps -1 \
     """
-    #--fast_dev_run
-    
     main(args.split())
